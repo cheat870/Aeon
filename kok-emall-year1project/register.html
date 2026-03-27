@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - KOK-eMall</title>
+    <link rel="stylesheet" href="eMall-style/style.css">
+    <script src="https://kit.fontawesome.com/29f47544e3.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="eMall-style/header.css">
+    <link rel="stylesheet" href="eMall-style/general.css">
+    <link rel="stylesheet" href="eMall-style/footer.css">
+    <link rel="stylesheet" href="eMall-style/auth.css">
+    <link rel="icon" type="image" href="eMall-photo/screenshot 2025-07-28 111552.png">
+  </head>
+  <body>
+    <section id="header">
+      <a href="#"><img class="logo" src="eMall-photo/screenshot 2025-07-28 111552.png" alt="logo" /></a>
+
+      <div>
+        <ul id="navbar">
+          <li><a href="index.html">Home</a></li>
+          <li><a href="shop.html">Shop</a></li>
+          <li><a href="blog.html">Blog</a></li>
+          <li><a href="about.html">About</a></li>
+          <li><a href="contact.html">Contact</a></li>
+          <li id="lg-bag"><a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a></li>
+          <a href="#" id="close"><i class="fa-solid fa-x"></i></a>
+        </ul>
+      </div>
+
+      <div id="mobile">
+        <a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a>
+        <i id="bar" class="fas fa-outdent"></i>
+      </div>
+    </section>
+
+    <section class="section-p1">
+      <div class="auth-card">
+        <h2>Create account</h2>
+        <form id="register-form" class="auth-form">
+          <label>Name</label>
+          <input id="register-name" type="text" placeholder="Your name" />
+
+          <label>Email</label>
+          <input id="register-email" type="email" placeholder="you@example.com" required />
+
+          <label>Password</label>
+          <input id="register-password" type="password" placeholder="At least 6 characters" required />
+
+          <button class="normal" type="submit">Register</button>
+        </form>
+        <p class="auth-help">
+          Already have an account?
+          <a href="login.html">Login</a>
+        </p>
+      </div>
+    </section>
+
+    <script src="eMall-java/script.js"></script>
+  </body>
+</html>

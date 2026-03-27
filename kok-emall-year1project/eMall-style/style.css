@@ -1,0 +1,460 @@
+
+#hero{
+   background-image: url("../eMall-photo/aeon-mall.jpg");
+   height:90vh;
+   width:100%;
+   background-position:top 25% right 0;
+   background-size:cover;
+   padding:0 80px;
+   display:flex;
+   flex-direction:column;
+   align-items:flex-start;
+   justify-content: center;
+}
+#hero h1{
+   padding-bottom:15px;
+   color:white;
+}
+.hero-p{
+   color:white;
+   margin-top:20px;
+   margin-bottom:10px;
+}
+.value-deals p{
+   color:rgb(24, 145, 145);
+   font-size:40px;
+   font-weight:700;
+}
+#hero button{
+   background-image: url("../eMall-photo/button.avif");
+   background-color:aquamarine;
+   color:rgb(24, 145, 145);
+   border:0;
+   padding:14px 80px 14px 65px;
+   background-repeat: no-repeat;
+   cursor:pointer;
+   font-weight:700;
+   font-size:15px;
+}
+#hero button:hover{
+   color:rgb(28, 221, 221);
+   box-shadow:0 0 15px 3px rgb(222, 185, 0);
+}
+
+
+.section-p1{
+   padding:20px 40px;
+}
+#feature .fe-box:nth-child(6){
+   background-image: url("../eMall-photo/support.jpg");
+}
+#feature .fe-box:nth-child(5){
+   background-image: url("../eMall-photo/sell.webp");
+}
+#feature .fe-box:nth-child(4){
+   background-image: url("../eMall-photo/promotion.avif");
+}
+#feature .fe-box:nth-child(3){
+   background-image: url("../eMall-photo/save.webp");
+}
+#feature .fe-box:nth-child(2){
+   background-image: url("../eMall-photo/order.avif");
+}
+#feature .fe-box{
+   width:180px;
+   height:200px;
+   background-position: center;
+   background-size: cover;
+   background-image: url("../eMall-photo/shipping.webp");
+   box-shadow:20px 20px 34px rgba(0,0,0,0,03);
+   border: 1px solid rgb(24, 145, 145);
+   border-radius:4px;
+   position:relative;
+   margin:15px 0;
+   place-items:center;
+   
+}
+#feature .fe-box:hover{
+   box-shadow:0  10px 54px rgba(20, 0, 63, 0.329);
+}
+#feature{
+   display:flex;
+   align-items:center;
+   flex-wrap:wrap;
+   justify-content: space-between ;
+   column-gap:3%;
+}
+#feature .fe-box h6 a{
+   text-decoration: none;
+}
+#feature .fe-box h6{
+   padding: 9px 8px ;
+   line-height:1;
+   border-radius:8px;
+   color:white;
+   bottom:20px;
+   display:flex;
+   position:absolute;
+   background-color:rgb(251, 167, 57);
+}
+#feature .fe-box:nth-child(2) h6{
+   background-color:rgb(43, 86, 226);
+}
+#feature .fe-box:nth-child(3) h6{
+   background-color:blueviolet;
+}
+#feature .fe-box:nth-child(4) h6{
+   background-color:rgb(16, 165, 0);
+}
+#feature .fe-box:nth-child(5) h6{
+   background-color:rgb(171, 15, 15);
+}
+#feature .fe-box:nth-child(6) h6{
+   background-color:rgb(0, 153, 164);
+}
+.free-shipping-airplane{
+   position:absolute;
+   text-align:center;
+}
+#feature .fe-box h6:hover{
+   background-color:rgb(255, 183, 88);
+}
+#feature .fe-box:nth-child(2) h6:hover{
+   background-color:rgb(82, 118, 234);
+}
+#feature .fe-box:nth-child(3) h6:hover{
+   background-color:rgb(172, 84, 255);
+}
+#feature .fe-box:nth-child(4) h6:hover{
+   background-color:rgb(21, 211, 27);
+}
+#feature .fe-box:nth-child(5) h6:hover{
+   background-color:rgb(255, 0, 0);
+}
+#feature .fe-box:nth-child(6) h6:hover{
+   background-color:rgb(11, 201, 214);
+}
+.fe-box i{
+   color:rgb(1, 179, 255);
+   margin-top:30px;
+   font-size:70px;
+}
+.fe-box i:hover{
+      color:rgb(96, 207, 255);
+
+}
+#product1{
+   text-align:center;
+}
+#product1 .pro-container{
+   display:flex;
+   justify-content: space-between;
+   padding-top:20px;
+   flex-wrap:wrap;
+}
+#product1 p{
+   color:gray;
+   padding:10px 0;
+}
+#product1 .pro{
+   width:23%;
+   min-width: 250px;
+   padding: 10px 12px;
+   border:1px solid #cce7d0;
+   border-radius:15px;
+   cursor: pointer;
+   box-shadow: 20px 20px 30px rgba(0,0,0,0.02);
+   margin:15px 0;
+   position:relative;
+}
+#product1 .pro:hover{
+  box-shadow: 20px 20px 30px rgba(0,0,0,0.06);
+}
+#product1 .pro img{
+   width:100%;
+   height: 70%;
+   border-radius:15px;
+   
+}
+#product1 .pro .des{
+   text-align:start;
+   padding: 10px 0;
+}
+#product1 .pro .des span{
+   color:rgb(122, 122, 122);
+   font-size:12px;
+}
+#product1 .pro .des h3{
+   padding-top:7px;
+   color:rgb(78, 78, 78);
+   font-size:14px;
+}
+#product1 .pro .des i{
+   font-size:12px;
+   color:rgb(255, 208, 0);
+}
+
+#product1 .pro .des h2{
+   color:rgb(24, 145, 145);
+   font-size:15px;
+   font-weight:700;
+   padding-top: 7px;
+
+}
+.pro a i{
+   width:40px;
+   height:40px;
+   line-height:40px;
+   border-radius:50px;
+   background-color:rgb(223, 255, 244);
+   color:rgb(24, 145, 145);
+   border:1px solid rgb(24, 145, 145);
+   position:absolute;
+   right:10px;
+   bottom:20px;
+}
+.pro img{
+   height:70mm;
+   width:100%;
+   object-fit:fill;
+}
+
+.section-m1{
+   margin:40px 0;
+}
+#banner{
+   text-align:center;
+   display:flex;
+   justify-content: center;
+   flex-direction:column;
+   align-items:center;
+   width:100%;
+   height:100%;
+   padding:70px 0;
+   background-size:cover;
+   background-position:center;
+   background-image: url("../eMall-photo/sale-banner.jpg");
+}
+
+#banner h2{
+   color:rgb(24, 145, 145);
+   font-size:16px;
+}
+#banner h1{
+   color:rgb(24, 145, 145);
+   font-size:30px;
+   padding: 10px 0;
+}
+#banner h1 span{
+   color:rgb(201, 2, 2);
+}
+button.normal{
+   font-size:14px;
+   font-weight:600;
+   padding:15px 30px;
+   color:black;
+   border-radius:4px;
+   cursor: pointer;
+   outline:none;
+   border:none;
+   transition:0.3s;
+}
+button.white{
+   font-size:13px;
+   font-weight:600;
+   padding:11px 18px;
+   color:white;
+   background-color:transparent;
+   border-radius:4px;
+   cursor: pointer;
+   outline:none;
+   border:1px solid white;
+   transition:0.3s;
+}
+#banner button:hover{
+   background-color:rgb(24, 145, 145);
+   color:white;
+}
+
+
+#sm-banner{
+   display:flex;
+   justify-content:space-between;
+   flex-wrap:wrap;
+}
+#sm-banner .banner-box{
+   display:flex;
+   justify-content: center;
+   flex-direction:column;
+   align-items:flex-start;
+   min-width:48%;
+   height:100%;
+   background-size:cover;
+   background-position:center;
+   background-image: url("../eMall-photo/banner1.png");
+   color:rgb(24, 145, 145);
+   padding:30px;
+}
+#sm-banner .banner-box2{
+   background-image: url("../eMall-photo/banner2.jpg");
+
+}
+.banner-box h2{
+   font-size:28px;
+}
+.banner-box h1{
+   font-size:35px;
+   padding: 10px 0;
+}
+.banner-box span{
+   color:rgb(0, 247, 255);
+}
+
+#sm-banner h2{
+   color:white;
+   font-size:20px;
+   font-weight:300;
+}
+#sm-banner span{
+   color:white;
+   font-size:14px;
+   font-weight:500;
+   padding-bottom:15px;
+}
+.banner-box button:hover{
+   background-color:rgb(8, 125, 136);
+
+}
+#banner3{
+   display:flex;
+   justify-content: space-between;
+   flex-wrap: wrap;
+   padding:0 40px;
+   margin-top:20px;
+}
+#banner3 .banner-box{
+   display:flex;
+   justify-content: center;
+   flex-direction:column;
+   align-items:flex-start;
+   min-width:30%;
+   height:30vh;
+   background-size:cover;
+   background-position:center;
+   background-image: url("../eMall-photo/banner3-copy.jpg");
+   color:rgb(11, 179, 194);
+   padding:20px;
+   margin-bottom:20px;
+}
+#banner3 .banner-box:nth-child(2){
+   background-image: url("../eMall-photo/banner4.jpg");
+}
+#banner3 .banner-box:nth-child(3){
+      background-image: url("../eMall-photo/banner5.jpg");
+}
+#banner3 h2{
+   color:rgb(208, 0, 0);
+   font-weight:800;
+   font-size:15px;
+}
+#banner3 h1{
+   color:white;
+   font-weight:800;
+}
+
+
+#newsletter{
+   display:flex;
+   justify-content: space-between;
+   flex-wrap: wrap;
+   align-items: center;
+   background-image: url("../eMall-photo/sign-up.jpg");
+   background-repeat:no-repeat;
+   background-position: center;
+   background-color: black;
+}
+
+#newsletter h2{
+   font-size:22px;
+   font-weight:700;
+   color:white;
+}
+#newsletter p{
+   color:rgb(164, 164, 164);
+   font-size:14px;
+   font-weight:400;
+}
+#newsletter p span{
+   color:yellow;
+}
+#newsletter .form{
+   display:flex;
+   width:40%;
+}
+#newsletter input{
+   height:3.125rem;
+   padding:0 1.25rem;
+   font-size:14px;
+   width:100%;
+   border: 1px solid transparent;
+   border-radius:4px;
+   outline:none;
+   border-top-right-radius: 0;
+   border-bottom-right-radius: 0;
+}
+#newsletter button{
+   background-color:rgb(8, 125, 136);
+   color:white;
+   white-space: nowrap;
+   border-top-left-radius: 0;
+   border-bottom-left-radius: 0;
+}
+
+
+@media (max-width:799px){
+   #feature .fe-box{
+      width:180px;
+      height:200px;
+   }
+   #product1 .pro{
+      width:45%;
+      min-height: 500px;
+   }
+}
+
+@media (max-width:1099px){
+   #feature .fe-box{
+      width:250px;
+      height:280px;
+   }
+   #product1 .pro{
+      width:45%;
+      min-height: 500px;
+   }
+   #banner3{
+      padding: 0  40px;
+   }
+   #banner3 .banner-box{
+      width:28%;
+   }
+   #product1 .pro-container{
+      justify-content: center;
+   }
+   #product1 .pro{
+      width:100%;
+      min-width: 350px;
+      height:100%;
+      min-height: 370px;
+   }
+   #product1 .pro img{
+      width:100%;
+      height: 55%;
+   }
+}
+
+
+
+
+
+
+

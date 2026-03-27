@@ -1,0 +1,64 @@
+.about-header{
+   background-image: url(../eMall-photo/about-background.jpg);
+   width:100%;
+   height:40vh;
+   background-size: cover;
+   background-position: center;
+   display:flex;
+   justify-content: center;
+   text-align:center;
+   flex-direction: column;
+   padding:14px;
+}
+.about-header h1{
+   color:black;
+   font-weight: 700;
+   font-size: 34px;
+}
+.about-header p{
+   color:rgb(0, 144, 96);
+   font-weight: 700;
+   font-size: 24px;
+}
+#about-head{
+   display: flex;
+   align-items: center;
+}
+#about-head img{
+   height: 50vh;
+   width:50%;
+   object-fit: cover;
+}
+#about-head div{
+   padding-left:40px;
+}
+#about-app{
+   text-align:center;
+}
+#about-app .video{
+   width:100%;
+   height:100%;
+   margin:30px auto 0 auto;
+}
+#about-app .video video{
+   width:70%;
+   height: 100%;
+   border-radius: 20px;
+}
+
+@media (max-width:477px){
+   #about-head{
+      flex-direction: column;
+   }
+   #about-head img{
+      margin-bottom:20px;
+      width:100%;
+   }
+   #about-head div{
+      padding-left:0;
+   }
+   #about-app .video video {
+      width: 100%;
+   }
+
+}

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cart</title>
+    <link rel="stylesheet" href="eMall-style/shop.css">
+    <link rel="stylesheet" href="eMall-style/style.css">
+    <script src="https://kit.fontawesome.com/29f47544e3.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="eMall-style/header.css">
+    <link rel="stylesheet" href="eMall-style/general.css">
+    <link rel="stylesheet" href="eMall-style/footer.css">
+    <link rel="stylesheet" href="eMall-style/cart.css">    
+       <link rel="icon" type="image" href="eMall-photo/screenshot 2025-07-28 111552.png">
+
+    <!--font-->
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link href="https://fonts.googleapis.com/css2?family=Khmer&family=Roboto:ital,wght@0,100..900;1,100..900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Khmer&family=Roboto:ital,wght@0,100..900;1,100..900&family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap" rel="stylesheet">
+
+  </head>
+  <body>
+
+      <!--Header-->
+
+      <section id="header">
+         <a href="#"><img class="logo" src="eMall-photo/screenshot 2025-07-28 111552.png" alt="logo" ></img></a>
+
+         <div>
+            <ul id="navbar">
+               <li><a href="index.html">Home</a></li>
+               <li><a href="shop.html">Shop</a></li>
+               <li><a href="blog.html">Blog</a></li>   
+               <li><a href="about.html">About</a></li>
+               <li><a href="contact.html">Contact</a></li>
+               <li id="lg-bag"><a class="active"href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a></li>
+               <a href="#" id="close"><i class="fa-solid fa-x"></i></a>
+            </ul>
+         </div>
+
+         <div id="mobile">
+            <a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a>
+            <i id="bar" class="fas fa-outdent"></i>
+         </div>
+      </section>
+
+      <section id="page-header" class="cart-header">
+         <h1>#stayhome</h1>
+         <p>Save more with coupons & up to 70% off! </p>
+      </section>
+      
+      <section id="cart" class="section-p1">
+         <table width="100%">
+            <thead>
+               <tr>
+                  <td>Remove</td>
+                  <td>Image</td>
+                  <td>Product</td>
+                  <td>Price</td>
+                  <td>Quantity</td>
+                  <td>Subtotal</td>
+               </tr>
+            </thead>
+            <tbody id="cart-items"></tbody>
+         </table>
+      </section>
+
+      <section id="cart-add" class="section-p1">
+         <p id="cart-empty" style="display:none;color:gray;margin-bottom:12px;">Your cart is empty.</p>
+         <div id="coupon">
+            <h3>Apply Coupon</h3>
+            <div>
+               <input type="text" placeholder="Enter Your Coupon">
+               <button class="normal">Apply</button>
+            </div>
+         </div>
+
+         <div id="subtotal">
+            <h3>Cart Totals</h3>
+            <table>
+               <tr>
+                  <td>Cart Subtotals</td>
+                  <td id="cart-subtotal">$0.00</td>
+               </tr>
+               <tr>
+                  <td>Shipping</td>
+                  <td>Free</td>
+               </tr>
+               <tr>
+                  <td><strong>Total</strong></td>
+                  <td><strong id="cart-total">$0.00</strong></td>
+               </tr>
+            </table>
+            <button id="checkout-btn" class="normal">Proceed to checkout</button>
+         </div>
+      </section>
+      <!--Footer-->
+
+      <footer class="section-p1">
+         <div class="col">
+         <a href="#"><img class="logo" src="eMall-photo/screenshot 2025-07-28 111552.png" alt="logo" ></img></a>
+            <h2>Contact</h2>
+            <p><strong>Address:</strong> 562 Steoung Mean Chey Road, Street 32, Phnom Penh</p>
+            <p><strong>Phone:</strong> +855 78 939 159</p>
+            <p><strong>Hours:</strong>  8:00 - 11:00, Mon - Sat</p>
+            <div class="follow">
+               <h2>Follow us</h2>
+               <div class="icons">
+                  <i class="fab fa-facebook-f"></i>
+                  <i class="fab fa-twitter"></i>
+                  <i class="fab fa-instagram"></i>
+                  <i class="fab fa-pinterest-p"></i>
+                  <i class="fab fa-youtube"></i>
+               </div>
+            </div>
+         </div>
+
+         <div class="col">
+            <h2>About</h2>
+            <a onclick="window.location.href='about.html';">About Us</a>
+            <a onclick="window.location.href='cart.html';">Delivery Information</a>
+            <a onclick="window.location.href='blog.html';">Privacy Policy</a>
+            <a onclick="window.location.href='about.html';">Terms & Conditions</a>
+            <a onclick="window.location.href='contact.html';">Contact Us</a>
+         </div>
+         <div class="col">
+            <h2>My Account</h2>
+            <a onclick="document.getElementById('newsletter').scrollIntoView({ behavior: 'smooth' })">Sign in</a>
+            <a href="cart.html">View Cart</a>
+            <a href="sproduct.html">My Wishlist</a>
+            <a href="cart.html">Track My Order</a>
+            <a href="contact.html">Help</a>
+         </div>
+
+         <div class="col install">
+            <h2>Install App</h2>
+            <p>From app Store or Google Play</p>
+            <div class="row">
+               <img class="download"src="eMall-photo/google-play.png"  alt="">
+               <img class="download"src="eMall-photo/app-store.png"  alt="">
+            </div>
+         
+
+         
+            <p>Secured Payment Goteways</p>
+            <div class="row">
+               <img src="eMall-photo/visa.jpg" alt="">
+               <img src="eMall-photo/master-card.jpg" alt="">
+               <img src="eMall-photo/aba.jpg" alt="">
+               <img src="eMall-photo/aceleda.webp"  alt="">
+            </div>
+         </div>
+         
+      </footer>
+      <div class="copyright">
+         <hr>© រក្សាសិទ្ធិដោយ KOK - eMall 2025
+      </div>
+
+    <script src="eMall-java/script.js"></script>
+  </body>
+</html>
