@@ -21,7 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from backend.store import confirm_order_payment, get_order_details, list_pending_orders  # noqa: E402
+from backend.store import confirm_order_payment, get_order_details, list_auth_events, list_pending_orders, list_users  # noqa: E402
 
 
 def _env(name: str) -> str:
@@ -98,6 +98,8 @@ def _help_text() -> str:
             "",
             "Commands:",
             "/myid - show your Telegram user id",
+            "/users - list recent users (admin)",
+            "/history [query] - list recent auth events (admin)",
             "/pending - list latest pending_payment orders (admin)",
             "/invoice <order_id> - show invoice details (admin)",
             "/confirm <order_id> [provider_ref] - mark order as paid (admin)",
@@ -132,6 +134,37 @@ def _cmd_pending() -> str:
         lines.append(
             f"- #{order['id']} | {_money(int(order.get('total_cents', 0)), order.get('currency') or 'USD')} | "
             f"{user.get('email') or 'unknown'} | created {order.get('created_at')}"
+        )
+    return "\n".join(lines)
+
+
+def _cmd_users() -> str:
+    users = list_users(limit=20)
+    if not users:
+        return "No users found."
+
+    lines = ["Users (latest):"]
+    for user in users:
+        lines.append(
+            f"- #{user['id']} | {user.get('email')} | {user.get('status') or '-'} | "
+            f"joined {user.get('created_at')} | last login {user.get('last_login_at') or '-'}"
+        )
+    return "\n".join(lines)
+
+
+def _cmd_history(query: str | None = None) -> str:
+    events = list_auth_events(limit=25, query=query)
+    if not events:
+        return "No auth history found."
+
+    heading = "Auth history"
+    if query:
+        heading += f" for '{query}'"
+    lines = [heading + ":"]
+    for event in events:
+        lines.append(
+            f"- #{event['id']} | {event.get('event')} | user #{event.get('user_id')} | "
+            f"{event.get('email') or '-'} | {event.get('created_at')} | IP {event.get('ip_address') or '-'}"
         )
     return "\n".join(lines)
 
@@ -281,6 +314,18 @@ def main() -> int:
                 if cmd == "/pending":
                     if _ensure_admin(token, chat_id, user_id, admin_ids):
                         _send_text(token, chat_id, _cmd_pending())
+                    continue
+
+                if cmd == "/users":
+                    if _ensure_admin(token, chat_id, user_id, admin_ids):
+                        _send_text(token, chat_id, _cmd_users())
+                    continue
+
+                if cmd == "/history":
+                    if not _ensure_admin(token, chat_id, user_id, admin_ids):
+                        continue
+                    query = " ".join(args).strip() or None
+                    _send_text(token, chat_id, _cmd_history(query))
                     continue
 
                 if cmd == "/invoice":

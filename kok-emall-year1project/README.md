@@ -80,9 +80,9 @@ Option B: Local admin script (updates the JSON store directly)
 python scripts/mark_order_paid.py <order_id> [provider_ref]
 ```
 
-## Telegram admin bot (view invoices)
+## Telegram admin bot (orders + users + auth history)
 
-The bot can list pending orders, show invoices, and confirm payments (after you verify money arrived in ABA).
+The bot can list recent users, show auth/login history, list pending orders, show invoices, and confirm payments (after you verify money arrived in ABA).
 
 1) Copy `.env.example` to `.env` and set:
 
@@ -102,6 +102,8 @@ python scripts/telegram_bot.py
 
 Commands:
 
+- `/users`
+- `/history [query]`
 - `/pending`
 - `/invoice <order_id>`
 - `/confirm <order_id> [provider_ref]`

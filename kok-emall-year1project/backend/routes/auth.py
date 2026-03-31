@@ -4,7 +4,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt_identity, jwt_required
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from backend.store import get_user_by_email, get_user_by_id, next_id, update_state, utcnow_iso
+from backend.store import append_auth_event, get_user_by_email, get_user_by_id, next_id, update_state, utcnow_iso
 from backend.telegram_notify import send_auth_event
 from backend.utils import api_error, get_json, normalize_email
 
@@ -42,6 +42,8 @@ def register():
 
     password_hash = generate_password_hash(password)
 
+    ip_address = _client_ip()
+
     def mutator(state: dict) -> dict:
         existing = next((row for row in state["users"] if row.get("email") == email), None)
         if existing:
@@ -59,13 +61,14 @@ def register():
             "status": "online",
         }
         state["users"].append(user)
+        append_auth_event(state, event_name="register", user=user, ip_address=ip_address)
         return user
 
     user = update_state(mutator)
     if user.get("error") == "exists":
         return api_error("Email already registered.", 409)
 
-    send_auth_event("register", user, ip_address=_client_ip())
+    send_auth_event("register", user, ip_address=ip_address)
     access_token = create_access_token(identity=str(user["id"]))
     return jsonify({"access_token": access_token, "user": _user_to_dict(user)}), 201
 
@@ -84,11 +87,14 @@ def login():
     if not user or not check_password_hash(user.get("password_hash", ""), password):
         return api_error("Invalid email or password.", 401)
 
+    ip_address = _client_ip()
+
     def mutator(state: dict) -> dict | None:
         for row in state["users"]:
             if int(row.get("id", 0)) == int(user["id"]):
                 row["last_login_at"] = utcnow_iso()
                 row["status"] = "online"
+                append_auth_event(state, event_name="login", user=row, ip_address=ip_address)
                 return row
         return None
 
@@ -96,7 +102,7 @@ def login():
     if not fresh_user:
         return api_error("User not found.", 404)
 
-    send_auth_event("login", fresh_user, ip_address=_client_ip())
+    send_auth_event("login", fresh_user, ip_address=ip_address)
     access_token = create_access_token(identity=str(fresh_user["id"]))
     return jsonify({"access_token": access_token, "user": _user_to_dict(fresh_user)})
 
@@ -116,11 +122,14 @@ def me():
 def logout():
     user_id = int(get_jwt_identity())
 
+    ip_address = _client_ip()
+
     def mutator(state: dict) -> dict | None:
         for row in state["users"]:
             if int(row.get("id", 0)) == user_id:
                 row["last_logout_at"] = utcnow_iso()
                 row["status"] = "offline"
+                append_auth_event(state, event_name="logout", user=row, ip_address=ip_address)
                 return row
         return None
 
@@ -128,7 +137,7 @@ def logout():
     if not user:
         return api_error("User not found.", 404)
 
-    send_auth_event("logout", user, ip_address=_client_ip())
+    send_auth_event("logout", user, ip_address=ip_address)
     return jsonify({"ok": True})
 
 

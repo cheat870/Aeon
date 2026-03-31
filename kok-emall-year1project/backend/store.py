@@ -20,6 +20,7 @@ _DEFAULT_STATE: StoreState = {
             "orders": 1,
             "order_items": 1,
             "payments": 1,
+            "auth_events": 1,
         }
     },
     "users": [],
@@ -27,6 +28,7 @@ _DEFAULT_STATE: StoreState = {
     "orders": [],
     "order_items": [],
     "payments": [],
+    "auth_events": [],
 }
 
 
@@ -51,7 +53,7 @@ def _ensure_shape(state: StoreState) -> StoreState:
     for key, value in _DEFAULT_STATE["meta"]["next_ids"].items():
         state["meta"]["next_ids"].setdefault(key, value)
 
-    for key in ("users", "cart_items", "orders", "order_items", "payments"):
+    for key in ("users", "cart_items", "orders", "order_items", "payments", "auth_events"):
         if not isinstance(state.get(key), list):
             state[key] = []
     return state
@@ -108,6 +110,27 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
     return next((deepcopy(user) for user in state["users"] if user.get("email") == normalized), None)
 
 
+def append_auth_event(
+    state: StoreState,
+    *,
+    event_name: str,
+    user: dict[str, Any],
+    ip_address: str | None = None,
+) -> dict[str, Any]:
+    event = {
+        "id": next_id(state, "auth_events"),
+        "event": event_name,
+        "user_id": int(user.get("id", 0)),
+        "email": user.get("email"),
+        "name": user.get("name"),
+        "status": user.get("status"),
+        "ip_address": ip_address,
+        "created_at": utcnow_iso(),
+    }
+    state["auth_events"].append(event)
+    return event
+
+
 def get_order_details(order_id: int) -> dict[str, Any] | None:
     state = read_state()
     order = next((deepcopy(row) for row in state["orders"] if int(row.get("id", 0)) == int(order_id)), None)
@@ -135,6 +158,29 @@ def list_pending_orders(limit: int = 15) -> list[dict[str, Any]]:
         reverse=True,
     )
     return [{"order": order, "user": users_by_id.get(int(order.get("user_id", 0)))} for order in rows[:limit]]
+
+
+def list_users(limit: int = 25) -> list[dict[str, Any]]:
+    state = read_state()
+    rows = sort_by_created([deepcopy(user) for user in state["users"]], reverse=True)
+    return rows[:limit]
+
+
+def list_auth_events(limit: int = 25, query: str | None = None) -> list[dict[str, Any]]:
+    normalized_query = str(query or "").strip().lower()
+    state = read_state()
+    rows = sort_by_created([deepcopy(event) for event in state["auth_events"]], reverse=True)
+
+    if normalized_query:
+        rows = [
+            event
+            for event in rows
+            if normalized_query in str(event.get("email") or "").lower()
+            or normalized_query in str(event.get("event") or "").lower()
+            or normalized_query in str(event.get("user_id") or "")
+            or normalized_query in str(event.get("name") or "").lower()
+        ]
+    return rows[:limit]
 
 
 def confirm_order_payment(order_id: int, provider_ref: str | None = None) -> dict[str, Any] | None:
