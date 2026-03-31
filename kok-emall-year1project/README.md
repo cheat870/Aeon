@@ -1,8 +1,8 @@
 # KOK-eMall (Year 1 Project)
 
-This project is a static HTML/CSS/JS frontend with a simple Flask backend API for:
+This project is a static HTML/CSS/JS frontend with a Flask backend API for:
 
-- Login/Register (JWT)
+- Login/Register/Logout (JWT)
 - Cart (login required)
 - Checkout (create order)
 - Payment via ABA merchant KHQR (QR payload generation)
@@ -28,6 +28,12 @@ python -m backend
 Then open:
 
 - http://127.0.0.1:5000/
+
+## Storage
+
+- The backend stores users, carts, orders, and payments in `backend/instance/store.json`.
+- No SQL/MySQL/SQLite server is required for app data anymore.
+- If `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ADMIN_IDS` are configured, register/login/logout events are sent to Telegram automatically.
 
 ## Notes
 
@@ -68,7 +74,7 @@ Option A (recommended): Admin API (requires `.env` secret)
 - Set `PAYMENT_CONFIRM_SECRET` in `.env`
 - Call `POST /api/payments/admin/confirm` with header `X-Admin-Secret`
 
-Option B: Local admin script (updates SQLite directly)
+Option B: Local admin script (updates the JSON store directly)
 
 ```bash
 python scripts/mark_order_paid.py <order_id> [provider_ref]

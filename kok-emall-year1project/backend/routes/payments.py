@@ -5,9 +5,8 @@ import os
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from backend.extensions import db
-from backend.models import Order, Payment, utcnow
 from backend.payments.emv_qr import EmvQrError, with_amount
+from backend.store import confirm_order_payment, read_state
 from backend.utils import api_error, get_json
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
@@ -35,28 +34,24 @@ def admin_confirm():
 
     provider_ref = str(payload.get("provider_ref", "")).strip() or None
 
-    order = Order.query.filter_by(id=order_id).first()
+    state = read_state()
+    order = next((row for row in state["orders"] if int(row.get("id") or 0) == order_id), None)
     if not order:
         return api_error("Order not found.", 404)
-    if order.status == "paid":
-        return jsonify({"order": {"id": order.id, "status": order.status}}), 200
-    if order.status != "pending_payment":
+    if order.get("status") == "paid":
+        return jsonify({"order": {"id": order_id, "status": "paid"}}), 200
+    if order.get("status") != "pending_payment":
         return api_error("Order is not payable.", 409)
 
-    order.status = "paid"
-    order.paid_at = utcnow()
-    payment = Payment(
-        order_id=order.id,
-        provider="aba_khqr",
-        status="succeeded",
-        amount_cents=order.total_cents,
-        currency=order.currency,
-        provider_ref=provider_ref or f"aba-{order.id}",
+    result = confirm_order_payment(order_id, provider_ref=provider_ref)
+    payment = result["payment"] if result else None
+    order = result["order"] if result else None
+    return jsonify(
+        {
+            "payment": {"id": int(payment["id"]), "status": payment.get("status")},
+            "order": {"id": int(order["id"]), "status": order.get("status")},
+        }
     )
-    db.session.add(payment)
-    db.session.commit()
-
-    return jsonify({"payment": {"id": payment.id, "status": payment.status}, "order": {"id": order.id, "status": order.status}})
 
 
 @payments_bp.post("/aba/qr")
@@ -73,7 +68,15 @@ def aba_qr():
     except Exception:
         return api_error("order_id is required.", 400)
 
-    order = Order.query.filter_by(id=order_id, user_id=user_id).first()
+    state = read_state()
+    order = next(
+        (
+            row
+            for row in state["orders"]
+            if int(row.get("id") or 0) == order_id and int(row.get("user_id") or 0) == user_id
+        ),
+        None,
+    )
     if not order:
         return api_error("Order not found.", 404)
 
@@ -87,14 +90,16 @@ def aba_qr():
             501,
         )
 
-    if order.currency == "KHR":
-        amount_str = str(int(round(order.total_cents / 100)))
+    currency = order.get("currency") or "USD"
+    total_cents = int(order.get("total_cents", 0))
+    if currency == "KHR":
+        amount_str = str(int(round(total_cents / 100)))
     else:
-        amount_str = f"{(order.total_cents / 100):.2f}"
+        amount_str = f"{(total_cents / 100):.2f}"
 
     try:
         qr_payload = with_amount(base, amount=amount_str, point_of_initiation_method="12")
     except EmvQrError as e:
         return api_error(f"Invalid ABA_KHQR_BASE: {e}", 500)
 
-    return jsonify({"qr_payload": qr_payload, "amount": amount_str, "currency": order.currency})
+    return jsonify({"qr_payload": qr_payload, "amount": amount_str, "currency": currency})

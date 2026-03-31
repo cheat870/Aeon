@@ -220,8 +220,12 @@
     const logoutLink = document.createElement('a');
     logoutLink.href = '#';
     logoutLink.textContent = 'Logout';
-    logoutLink.addEventListener('click', (e) => {
+    logoutLink.addEventListener('click', async (e) => {
       e.preventDefault();
+      try {
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+      } catch {
+      }
       clearAccessToken();
       toast('Logged out');
       window.location.href = 'index.html';

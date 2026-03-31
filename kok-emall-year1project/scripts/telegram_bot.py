@@ -9,6 +9,8 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+from dotenv import load_dotenv
+
 
 def _project_root() -> Path:
     return Path(__file__).resolve().parents[1]
@@ -19,19 +21,17 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 
-from backend import create_app  # noqa: E402
-from backend.extensions import db  # noqa: E402
-from backend.models import Order, OrderItem, Payment, User, utcnow  # noqa: E402
+from backend.store import confirm_order_payment, get_order_details, list_pending_orders  # noqa: E402
 
 
 def _env(name: str) -> str:
-    return os.environ.get(name, "").strip()
+    return os.environ.get(name, "").strip().strip('"').strip("'")
 
 
 def _parse_admin_ids(raw: str) -> set[int]:
     ids: set[int] = set()
     for part in (raw or "").split(","):
-        part = part.strip()
+        part = part.strip().strip('"').strip("'")
         if not part:
             continue
         try:
@@ -43,7 +43,6 @@ def _parse_admin_ids(raw: str) -> set[int]:
 
 def _money(amount_cents: int, currency: str) -> str:
     if currency.upper() == "KHR":
-        # For display only; store stays cents.
         return f"{currency} {int(round(amount_cents / 100)):,}"
     return f"{currency} {amount_cents / 100:.2f}"
 
@@ -56,16 +55,14 @@ def _tg_get(token: str, method: str, params: dict[str, object] | None = None, ti
     query = ""
     if params:
         query = "?" + urllib.parse.urlencode(params, doseq=True)
-    url = f"{_tg_api_base(token)}/{method}{query}"
-    req = urllib.request.Request(url, method="GET")
+    req = urllib.request.Request(f"{_tg_api_base(token)}/{method}{query}", method="GET")
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
 def _tg_post(token: str, method: str, data: dict[str, object], timeout_s: int = 20) -> dict:
     payload = urllib.parse.urlencode(data).encode("utf-8")
-    url = f"{_tg_api_base(token)}/{method}"
-    req = urllib.request.Request(url, data=payload, method="POST")
+    req = urllib.request.Request(f"{_tg_api_base(token)}/{method}", data=payload, method="POST")
     with urllib.request.urlopen(req, timeout=timeout_s) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
@@ -73,11 +70,12 @@ def _tg_post(token: str, method: str, data: dict[str, object], timeout_s: int = 
 def _split_message(text: str, limit: int = 3800) -> list[str]:
     if len(text) <= limit:
         return [text]
+
     parts: list[str] = []
     current: list[str] = []
     current_len = 0
     for line in text.splitlines(True):
-        if current_len + len(line) > limit and current:
+        if current and current_len + len(line) > limit:
             parts.append("".join(current).rstrip())
             current = []
             current_len = 0
@@ -123,92 +121,91 @@ def _ensure_admin(token: str, chat_id: int, user_id: int, admin_ids: set[int]) -
 
 
 def _cmd_pending() -> str:
-    rows = (
-        db.session.query(Order, User)
-        .join(User, User.id == Order.user_id)
-        .filter(Order.status == "pending_payment")
-        .order_by(Order.created_at.desc())
-        .limit(15)
-        .all()
-    )
+    rows = list_pending_orders(limit=15)
     if not rows:
         return "No pending_payment orders."
 
     lines = ["Pending orders (latest):"]
-    for order, user in rows:
+    for row in rows:
+        order = row["order"]
+        user = row.get("user") or {}
         lines.append(
-            f"- #{order.id} | {_money(order.total_cents, order.currency)} | {user.email} | created {order.created_at.isoformat()}"
+            f"- #{order['id']} | {_money(int(order.get('total_cents', 0)), order.get('currency') or 'USD')} | "
+            f"{user.get('email') or 'unknown'} | created {order.get('created_at')}"
         )
     return "\n".join(lines)
 
 
 def _cmd_invoice(order_id: int) -> str:
-    order = Order.query.filter_by(id=order_id).first()
-    if not order:
+    details = get_order_details(order_id)
+    if not details:
         return "Order not found."
 
-    user = User.query.filter_by(id=order.user_id).first()
-    items = OrderItem.query.filter_by(order_id=order.id).order_by(OrderItem.id.asc()).all()
-    payment = Payment.query.filter_by(order_id=order.id).order_by(Payment.created_at.desc()).first()
+    order = details["order"]
+    items = details["items"]
+    user = details.get("user") or {}
+    payment = details.get("payment")
 
-    lines: list[str] = []
-    lines.append(f"Invoice: Order #{order.id}")
-    lines.append(f"Status: {order.status}")
-    if user:
-        lines.append(f"Customer: {user.email}")
-    lines.append(f"Created: {order.created_at.isoformat()}")
-    if order.paid_at:
-        lines.append(f"Paid: {order.paid_at.isoformat()}")
-    lines.append("")
-    lines.append(f"Subtotal: {_money(order.subtotal_cents, order.currency)}")
-    lines.append(f"Shipping: {_money(order.shipping_cents, order.currency)}")
-    lines.append(f"Total: {_money(order.total_cents, order.currency)}")
-    lines.append("")
-    lines.append("Items:")
+    lines: list[str] = [
+        f"Invoice: Order #{order['id']}",
+        f"Status: {order.get('status')}",
+        f"Customer: {user.get('email') or 'unknown'}",
+        f"Created: {order.get('created_at')}",
+    ]
+    if order.get("paid_at"):
+        lines.append(f"Paid: {order.get('paid_at')}")
+
+    lines.extend(
+        [
+            "",
+            f"Subtotal: {_money(int(order.get('subtotal_cents', 0)), order.get('currency') or 'USD')}",
+            f"Shipping: {_money(int(order.get('shipping_cents', 0)), order.get('currency') or 'USD')}",
+            f"Total: {_money(int(order.get('total_cents', 0)), order.get('currency') or 'USD')}",
+            "",
+            "Items:",
+        ]
+    )
+
     if not items:
         lines.append("- (none)")
-    for i in items:
-        unit = _money(i.unit_price_cents, order.currency)
-        line_total = _money(i.line_total_cents, order.currency)
-        brand = f" ({i.product_brand})" if i.product_brand else ""
-        lines.append(f"- {i.product_name}{brand} x{i.quantity} @ {unit} = {line_total}")
+    for item in items:
+        brand = f" ({item.get('product_brand')})" if item.get("product_brand") else ""
+        lines.append(
+            f"- {item.get('product_name')}{brand} x{int(item.get('quantity', 0))} @ "
+            f"{_money(int(item.get('unit_price_cents', 0)), order.get('currency') or 'USD')} = "
+            f"{_money(int(item.get('line_total_cents', 0)), order.get('currency') or 'USD')}"
+        )
+
     if payment:
-        lines.append("")
-        lines.append("Payment:")
-        lines.append(f"- Provider: {payment.provider}")
-        lines.append(f"- Amount: {_money(payment.amount_cents, payment.currency)}")
-        if payment.provider_ref:
-            lines.append(f"- Ref: {payment.provider_ref}")
-        lines.append(f"- Status: {payment.status}")
-        lines.append(f"- At: {payment.created_at.isoformat()}")
+        lines.extend(
+            [
+                "",
+                "Payment:",
+                f"- Provider: {payment.get('provider')}",
+                f"- Amount: {_money(int(payment.get('amount_cents', 0)), payment.get('currency') or 'USD')}",
+                f"- Ref: {payment.get('provider_ref') or '-'}",
+                f"- Status: {payment.get('status')}",
+                f"- At: {payment.get('created_at')}",
+            ]
+        )
     else:
-        lines.append("")
-        lines.append("Payment: (none)")
+        lines.extend(["", "Payment: (none)"])
     return "\n".join(lines)
 
 
 def _cmd_confirm(order_id: int, provider_ref: str | None) -> str:
-    order = Order.query.filter_by(id=order_id).first()
-    if not order:
+    details = get_order_details(order_id)
+    if not details:
         return "Order not found."
-    if order.status == "paid":
-        return f"Order #{order.id} is already paid."
-    if order.status != "pending_payment":
-        return f"Order #{order.id} is not payable (status={order.status})."
 
-    order.status = "paid"
-    order.paid_at = utcnow()
-    payment = Payment(
-        order_id=order.id,
-        provider="aba_khqr",
-        status="succeeded",
-        amount_cents=order.total_cents,
-        currency=order.currency,
-        provider_ref=(provider_ref or "").strip() or f"aba-{order.id}",
-    )
-    db.session.add(payment)
-    db.session.commit()
-    return f"Confirmed paid: Order #{order.id}."
+    order = details["order"]
+    if order.get("status") == "paid":
+        return f"Order #{order_id} is already paid."
+    if order.get("status") != "pending_payment":
+        return f"Order #{order_id} is not payable (status={order.get('status')})."
+
+    confirm_order_payment(order_id, provider_ref)
+    return f"Confirmed paid: Order #{order_id}."
 
 
 def _load_offset_state() -> tuple[Path, int]:
@@ -231,8 +228,7 @@ def _save_offset_state(state_path: Path, offset: int) -> None:
 
 
 def main() -> int:
-    app = create_app()
-    app.app_context().push()
+    load_dotenv()
 
     token = _env("TELEGRAM_BOT_TOKEN")
     if not token:
@@ -240,7 +236,6 @@ def main() -> int:
         return 2
 
     admin_ids = _parse_admin_ids(_env("TELEGRAM_ADMIN_IDS"))
-
     state_path, offset = _load_offset_state()
     print("Telegram bot running. Press Ctrl+C to stop.")
 
@@ -251,17 +246,16 @@ def main() -> int:
                 time.sleep(2)
                 continue
 
-            updates = resp.get("result") or []
-            for upd in updates:
+            for update in resp.get("result") or []:
                 try:
-                    update_id = int(upd.get("update_id"))
+                    update_id = int(update.get("update_id"))
                 except Exception:
                     continue
 
                 offset = max(offset, update_id + 1)
                 _save_offset_state(state_path, offset)
 
-                message = upd.get("message") or {}
+                message = update.get("message") or {}
                 text = (message.get("text") or "").strip()
                 if not text:
                     continue
@@ -285,9 +279,8 @@ def main() -> int:
                     continue
 
                 if cmd == "/pending":
-                    if not _ensure_admin(token, chat_id, user_id, admin_ids):
-                        continue
-                    _send_text(token, chat_id, _cmd_pending())
+                    if _ensure_admin(token, chat_id, user_id, admin_ids):
+                        _send_text(token, chat_id, _cmd_pending())
                     continue
 
                 if cmd == "/invoice":
@@ -341,4 +334,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -3,38 +3,37 @@ from __future__ import annotations
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from backend.extensions import db
-from backend.models import CartItem, Order, OrderItem
+from backend.store import next_id, read_state, sort_by_created, update_state, utcnow_iso
 from backend.utils import api_error
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/api/orders")
 
 
-def _order_to_dict(order: Order, items: list[OrderItem] | None = None) -> dict:
+def _order_to_dict(order: dict, items: list[dict] | None = None) -> dict:
     payload = {
-        "id": order.id,
-        "status": order.status,
-        "currency": order.currency,
-        "subtotal_cents": order.subtotal_cents,
-        "shipping_cents": order.shipping_cents,
-        "total_cents": order.total_cents,
-        "created_at": order.created_at.isoformat(),
-        "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+        "id": int(order["id"]),
+        "status": order.get("status"),
+        "currency": order.get("currency") or "USD",
+        "subtotal_cents": int(order.get("subtotal_cents", 0)),
+        "shipping_cents": int(order.get("shipping_cents", 0)),
+        "total_cents": int(order.get("total_cents", 0)),
+        "created_at": order.get("created_at"),
+        "paid_at": order.get("paid_at"),
     }
     if items is not None:
         payload["items"] = [
             {
-                "id": i.id,
+                "id": int(item["id"]),
                 "product": {
-                    "name": i.product_name,
-                    "brand": i.product_brand,
-                    "image_url": i.product_image_url,
-                    "unit_price_cents": i.unit_price_cents,
+                    "name": item.get("product_name"),
+                    "brand": item.get("product_brand"),
+                    "image_url": item.get("product_image_url"),
+                    "unit_price_cents": int(item.get("unit_price_cents", 0)),
                 },
-                "quantity": i.quantity,
-                "line_total_cents": i.line_total_cents,
+                "quantity": int(item.get("quantity", 0)),
+                "line_total_cents": int(item.get("line_total_cents", 0)),
             }
-            for i in items
+            for item in items
         ]
     return payload
 
@@ -43,69 +42,93 @@ def _order_to_dict(order: Order, items: list[OrderItem] | None = None) -> dict:
 @jwt_required()
 def create_order():
     user_id = int(get_jwt_identity())
-    existing = (
-        Order.query.filter_by(user_id=user_id, status="pending_payment").order_by(Order.created_at.desc()).first()
-    )
-    if existing:
+
+    def mutator(state: dict) -> dict:
+        existing_orders = [
+            row
+            for row in state["orders"]
+            if int(row.get("user_id") or 0) == user_id and row.get("status") == "pending_payment"
+        ]
+        existing_orders = sort_by_created(existing_orders, reverse=True)
+        if existing_orders:
+            return {"error": "pending", "order_id": int(existing_orders[0]["id"])}
+
+        cart_items = sort_by_created([row for row in state["cart_items"] if int(row.get("user_id") or 0) == user_id])
+        if not cart_items:
+            return {"error": "empty"}
+
+        subtotal_cents = sum(int(item.get("unit_price_cents", 0)) * int(item.get("quantity", 0)) for item in cart_items)
+        timestamp = utcnow_iso()
+        order = {
+            "id": next_id(state, "orders"),
+            "user_id": user_id,
+            "status": "pending_payment",
+            "currency": "USD",
+            "subtotal_cents": subtotal_cents,
+            "shipping_cents": 0,
+            "total_cents": subtotal_cents,
+            "created_at": timestamp,
+            "paid_at": None,
+        }
+        state["orders"].append(order)
+
+        order_items: list[dict] = []
+        for cart_item in cart_items:
+            quantity = int(cart_item.get("quantity", 0))
+            unit_price_cents = int(cart_item.get("unit_price_cents", 0))
+            line_total = unit_price_cents * quantity
+            order_item = {
+                "id": next_id(state, "order_items"),
+                "order_id": int(order["id"]),
+                "product_name": cart_item.get("product_name"),
+                "product_brand": cart_item.get("product_brand"),
+                "product_image_url": cart_item.get("product_image_url"),
+                "unit_price_cents": unit_price_cents,
+                "quantity": quantity,
+                "line_total_cents": line_total,
+                "created_at": timestamp,
+            }
+            order_items.append(order_item)
+
+        state["order_items"].extend(order_items)
+        state["cart_items"] = [row for row in state["cart_items"] if int(row.get("user_id") or 0) != user_id]
+        return {"order": order, "items": order_items}
+
+    result = update_state(mutator)
+    if result.get("error") == "pending":
         return (
             jsonify(
                 {
                     "error": {
                         "message": "Please complete payment for your existing order before creating a new one.",
                         "code": "PENDING_PAYMENT",
-                        "order_id": existing.id,
+                        "order_id": result["order_id"],
                     }
                 }
             ),
             409,
         )
-
-    cart_items = CartItem.query.filter_by(user_id=user_id).order_by(CartItem.created_at.asc()).all()
-    if not cart_items:
+    if result.get("error") == "empty":
         return api_error("Your cart is empty.", 400)
 
-    subtotal_cents = sum(i.unit_price_cents * i.quantity for i in cart_items)
-    order = Order(
-        user_id=user_id,
-        status="pending_payment",
-        currency="USD",
-        subtotal_cents=subtotal_cents,
-        shipping_cents=0,
-        total_cents=subtotal_cents,
-    )
-    db.session.add(order)
-    db.session.flush()
-
-    order_items: list[OrderItem] = []
-    for item in cart_items:
-        line_total = item.unit_price_cents * item.quantity
-        order_items.append(
-            OrderItem(
-                order_id=order.id,
-                product_name=item.product_name,
-                product_brand=item.product_brand,
-                product_image_url=item.product_image_url,
-                unit_price_cents=item.unit_price_cents,
-                quantity=item.quantity,
-                line_total_cents=line_total,
-            )
-        )
-
-    db.session.add_all(order_items)
-
-    CartItem.query.filter_by(user_id=user_id).delete(synchronize_session=False)
-    db.session.commit()
-
-    return jsonify({"order": _order_to_dict(order, order_items)}), 201
+    return jsonify({"order": _order_to_dict(result["order"], result["items"])}), 201
 
 
 @orders_bp.get("/<int:order_id>")
 @jwt_required()
 def get_order(order_id: int):
     user_id = int(get_jwt_identity())
-    order = Order.query.filter_by(id=order_id, user_id=user_id).first()
+    state = read_state()
+    order = next(
+        (
+            row
+            for row in state["orders"]
+            if int(row.get("id") or 0) == order_id and int(row.get("user_id") or 0) == user_id
+        ),
+        None,
+    )
     if not order:
         return api_error("Order not found.", 404)
 
-    items = OrderItem.query.filter_by(order_id=order.id).order_by(OrderItem.id.asc()).all()
+    items = sort_by_created([row for row in state["order_items"] if int(row.get("order_id") or 0) == order_id])
     return jsonify({"order": _order_to_dict(order, items)})
