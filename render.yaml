@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: kok-emall-app
+    runtime: python
+    plan: starter
+    region: oregon
+    branch: main
+    autoDeploy: true
+    rootDir: kok-emall-year1project
+    buildCommand: pip install -r backend/requirements.txt
+    startCommand: gunicorn "backend:create_app()" --bind 0.0.0.0:$PORT --workers 1 --threads 4
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.11
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: JWT_ACCESS_TOKEN_EXPIRES_DAYS
+        value: "7"
+      - key: RUN_TELEGRAM_BOT_IN_WEB
+        value: "1"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: PAYMENT_CONFIRM_SECRET
+        generateValue: true
+      - key: ABA_KHQR_BASE
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_IDS
+        sync: false
+    disk:
+      name: app-data
+      mountPath: /opt/render/project/src/kok-emall-year1project/backend/instance
+      sizeGB: 5

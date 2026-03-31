@@ -183,6 +183,79 @@ def list_auth_events(limit: int = 25, query: str | None = None) -> list[dict[str
     return rows[:limit]
 
 
+def list_orders(limit: int = 20, status: str | None = None) -> list[dict[str, Any]]:
+    normalized_status = str(status or "").strip().lower()
+    state = read_state()
+    users_by_id = {int(user.get("id", 0)): deepcopy(user) for user in state["users"]}
+    payments_by_order: dict[int, dict[str, Any]] = {}
+    for payment in sort_by_created([deepcopy(row) for row in state["payments"]], reverse=True):
+        order_id = int(payment.get("order_id", 0))
+        payments_by_order.setdefault(order_id, payment)
+
+    rows = [deepcopy(order) for order in state["orders"]]
+    if normalized_status:
+        rows = [order for order in rows if str(order.get("status") or "").lower() == normalized_status]
+    rows = sort_by_created(rows, reverse=True)
+    return [
+        {
+            "order": order,
+            "user": users_by_id.get(int(order.get("user_id", 0))),
+            "payment": payments_by_order.get(int(order.get("id", 0))),
+        }
+        for order in rows[:limit]
+    ]
+
+
+def get_user_admin_details(query: str | int) -> dict[str, Any] | None:
+    normalized_query = str(query).strip()
+    if not normalized_query:
+        return None
+
+    state = read_state()
+    user: dict[str, Any] | None = None
+    if normalized_query.isdigit():
+        user_id = int(normalized_query)
+        user = next((deepcopy(row) for row in state["users"] if int(row.get("id", 0)) == user_id), None)
+    else:
+        email = normalized_query.lower()
+        user = next((deepcopy(row) for row in state["users"] if str(row.get("email") or "").lower() == email), None)
+    if not user:
+        return None
+
+    user_id = int(user.get("id", 0))
+    orders = sort_by_created(
+        [deepcopy(row) for row in state["orders"] if int(row.get("user_id", 0)) == user_id],
+        reverse=True,
+    )
+    auth_events = sort_by_created(
+        [deepcopy(row) for row in state["auth_events"] if int(row.get("user_id", 0)) == user_id],
+        reverse=True,
+    )
+    return {
+        "user": user,
+        "orders": orders[:10],
+        "auth_events": auth_events[:10],
+        "stats": {
+            "orders_total": len(orders),
+            "orders_pending": sum(1 for order in orders if order.get("status") == "pending_payment"),
+            "orders_paid": sum(1 for order in orders if order.get("status") == "paid"),
+        },
+    }
+
+
+def get_store_stats() -> dict[str, int]:
+    state = read_state()
+    return {
+        "users_total": len(state["users"]),
+        "users_online": sum(1 for user in state["users"] if user.get("status") == "online"),
+        "orders_total": len(state["orders"]),
+        "orders_pending": sum(1 for order in state["orders"] if order.get("status") == "pending_payment"),
+        "orders_paid": sum(1 for order in state["orders"] if order.get("status") == "paid"),
+        "payments_total": len(state["payments"]),
+        "auth_events_total": len(state["auth_events"]),
+    }
+
+
 def confirm_order_payment(order_id: int, provider_ref: str | None = None) -> dict[str, Any] | None:
     def mutator(state: StoreState) -> dict[str, Any] | None:
         order = next((row for row in state["orders"] if int(row.get("id", 0)) == int(order_id)), None)

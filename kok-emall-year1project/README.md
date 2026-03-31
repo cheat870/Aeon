@@ -82,7 +82,7 @@ python scripts/mark_order_paid.py <order_id> [provider_ref]
 
 ## Telegram admin bot (orders + users + auth history)
 
-The bot can list recent users, show auth/login history, list pending orders, show invoices, and confirm payments (after you verify money arrived in ABA).
+The bot can list recent users, show one user summary, show auth/login history, list orders, show invoices, and confirm payments (after you verify money arrived in ABA).
 
 1) Copy `.env.example` to `.env` and set:
 
@@ -102,8 +102,35 @@ python scripts/telegram_bot.py
 
 Commands:
 
+- `/stats`
 - `/users`
+- `/user <id|email>`
 - `/history [query]`
+- `/orders [status]`
 - `/pending`
 - `/invoice <order_id>`
 - `/confirm <order_id> [provider_ref]`
+
+## Render deploy (public backend + frontend)
+
+This repo now includes `render.yaml` at the Git repo root so you can deploy the whole Flask app to Render. Because this app stores data in `backend/instance/store.json`, the Render service should use a persistent disk so users, orders, and invoices survive restarts.
+
+The Render setup runs the Telegram admin bot inside the same web service process (`RUN_TELEGRAM_BOT_IN_WEB=1`) so both the bot and the web app share the same JSON store.
+
+After you push the repo, open this Blueprint link and connect your GitHub repo in Render:
+
+```text
+https://dashboard.render.com/blueprint/new?repo=https://github.com/cheat870/Aeon
+```
+
+Fill these secrets in the Render Dashboard when prompted:
+
+- `ABA_KHQR_BASE`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_ADMIN_IDS`
+
+The Blueprint also generates:
+
+- `SECRET_KEY`
+- `JWT_SECRET_KEY`
+- `PAYMENT_CONFIRM_SECRET`

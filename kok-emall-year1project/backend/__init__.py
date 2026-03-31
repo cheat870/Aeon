@@ -13,6 +13,7 @@ from backend.routes.auth import auth_bp
 from backend.routes.cart import cart_bp
 from backend.routes.orders import orders_bp
 from backend.routes.payments import payments_bp
+from backend.telegram_admin_bot import start_background_bot
 
 
 def _project_root() -> Path:
@@ -49,6 +50,10 @@ def create_app() -> Flask:
     app.register_blueprint(orders_bp)
     app.register_blueprint(payments_bp)
 
+    @app.get("/api/health")
+    def _health():
+        return {"ok": True, "service": "kok-emall-backend"}
+
     @app.get("/")
     def _index():
         return send_from_directory(project_root, "index.html")
@@ -58,5 +63,9 @@ def create_app() -> Flask:
         if filename.startswith("api/"):
             abort(404)
         return send_from_directory(project_root, filename)
+
+    debug_enabled = os.environ.get("FLASK_DEBUG", "1") == "1"
+    if not debug_enabled or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        start_background_bot()
 
     return app
