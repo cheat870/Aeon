@@ -98,6 +98,35 @@ def upsert_tag(tlvs: list[EmvTlv], tag: str, value: bytes, *, after_tag: str | N
     return tlvs
 
 
+def _upsert_nested_tag(
+    tlvs: list[EmvTlv],
+    parent_tag: str,
+    child_tag: str,
+    child_value: bytes,
+    *,
+    after_child_tag: str | None = None,
+    after_parent_tag: str | None = None,
+) -> list[EmvTlv]:
+    parent_idx = _find_index(tlvs, parent_tag)
+    child_tlvs: list[EmvTlv] = []
+    if parent_idx is not None:
+        try:
+            child_tlvs = parse_emv_tlv(tlvs[parent_idx].value.decode("utf-8"))
+        except EmvQrError:
+            child_tlvs = []
+
+    child_tlvs = remove_tag(child_tlvs, child_tag)
+    upsert_tag(child_tlvs, child_tag, child_value, after_tag=after_child_tag)
+    nested_value = serialize_emv_tlv(child_tlvs)
+
+    if parent_idx is not None:
+        tlvs[parent_idx] = EmvTlv(tag=parent_tag, value=nested_value)
+        return tlvs
+
+    upsert_tag(tlvs, parent_tag, nested_value, after_tag=after_parent_tag)
+    return tlvs
+
+
 def _timestamp_value(*, point_of_initiation_method: str, expiration_days: int = 1) -> bytes:
     timestamp_ms = str(int(time.time() * 1000))
     value = f"00{len(timestamp_ms):02d}{timestamp_ms}"
@@ -117,6 +146,7 @@ def with_amount(
     amount: str,
     point_of_initiation_method: str = "12",
     expiration_days: int = 1,
+    merchant_reference: str | None = None,
 ) -> str:
     """
     Takes a base EMV/KHQR payload, injects/updates:
@@ -131,6 +161,14 @@ def with_amount(
 
     upsert_tag(tlvs, "01", point_of_initiation_method.encode("ascii"), after_tag="00")
     upsert_tag(tlvs, "54", amount.encode("ascii"), after_tag="53")
+    if merchant_reference:
+        _upsert_nested_tag(
+            tlvs,
+            "62",
+            "01",
+            merchant_reference.encode("utf-8"),
+            after_parent_tag="60",
+        )
     upsert_tag(
         tlvs,
         "99",

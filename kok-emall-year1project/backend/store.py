@@ -415,6 +415,22 @@ def get_latest_payment(order_id: int) -> dict[str, Any] | None:
     )
 
 
+def get_payment_by_merchant_ref(merchant_ref: str) -> dict[str, Any] | None:
+    normalized_ref = str(merchant_ref or "").strip()
+    if not normalized_ref:
+        return None
+
+    state = read_state()
+    return next(
+        (
+            deepcopy(row)
+            for row in reversed(state["payments"])
+            if str(row.get("qr_merchant_ref") or "").strip() == normalized_ref
+        ),
+        None,
+    )
+
+
 def list_pending_orders(limit: int = 15) -> list[dict[str, Any]]:
     state = read_state()
     users_by_id = {int(user.get("id", 0)): deepcopy(user) for user in state["users"]}
@@ -531,6 +547,7 @@ def upsert_pending_payment(
     qr_payload: str,
     qr_md5: str,
     qr_short_hash: str,
+    qr_merchant_ref: str | None,
     auto_confirm_enabled: bool,
 ) -> dict[str, Any] | None:
     def mutator(state: StoreState) -> dict[str, Any] | None:
@@ -552,6 +569,7 @@ def upsert_pending_payment(
             payment["qr_payload"] = qr_payload
             payment["qr_md5"] = qr_md5
             payment["qr_short_hash"] = qr_short_hash
+            payment["qr_merchant_ref"] = (qr_merchant_ref or "").strip() or None
             payment["auto_confirm_enabled"] = bool(auto_confirm_enabled)
             payment["updated_at"] = timestamp
         else:
@@ -566,6 +584,7 @@ def upsert_pending_payment(
                 "qr_payload": qr_payload,
                 "qr_md5": qr_md5,
                 "qr_short_hash": qr_short_hash,
+                "qr_merchant_ref": (qr_merchant_ref or "").strip() or None,
                 "auto_confirm_enabled": bool(auto_confirm_enabled),
                 "created_at": timestamp,
                 "updated_at": timestamp,

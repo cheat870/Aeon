@@ -14,7 +14,15 @@ from backend.payments.bakong_api import (
     qr_short_hash,
 )
 from backend.payments.emv_qr import EmvQrError, with_amount
-from backend.store import confirm_order_payment, get_latest_payment, read_state, upsert_pending_payment, utcnow_iso
+from backend.store import (
+    confirm_order_payment,
+    get_latest_payment,
+    get_payment_by_merchant_ref,
+    read_state,
+    upsert_pending_payment,
+    utcnow_iso,
+)
+from backend.telegram_notify import send_payment_event
 from backend.utils import api_error, get_json
 
 payments_bp = Blueprint("payments", __name__, url_prefix="/api/payments")
@@ -66,6 +74,34 @@ def _khqr_base() -> str:
     return os.environ.get("BAKONG_KHQR_BASE", "").strip() or os.environ.get("ABA_KHQR_BASE", "").strip()
 
 
+def _aba_webhook_token() -> str:
+    return (
+        os.environ.get("ABA_WEBHOOK_TOKEN", "").strip()
+        or os.environ.get("PAYWAY_WEBHOOK_TOKEN", "").strip()
+    )
+
+
+def _merchant_reference(order_id: int) -> str:
+    return f"KOK-ORD-{int(order_id)}"
+
+
+def _order_amount_string(order: dict) -> str:
+    currency = order.get("currency") or "USD"
+    total_cents = int(order.get("total_cents", 0))
+    if currency == "KHR":
+        return str(int(round(total_cents / 100)))
+    return f"{(total_cents / 100):.2f}"
+
+
+def _webhook_amount_to_cents(payload: dict) -> int:
+    currency = str(payload.get("original_currency") or payload.get("payment_currency") or "USD").upper()
+    raw_amount = payload.get("original_amount", payload.get("payment_amount", 0))
+    amount_value = float(raw_amount)
+    if currency == "KHR":
+        return int(round(amount_value * 100))
+    return int(round(amount_value * 100))
+
+
 def _order_for_user(user_id: int, order_id: int, state: dict) -> dict | None:
     return next(
         (
@@ -109,6 +145,7 @@ def bakong_qr():
                 qr_payload=str(existing_payment.get("qr_payload") or ""),
                 qr_md5=str(existing_payment.get("qr_md5") or ""),
                 qr_short_hash=str(existing_payment.get("qr_short_hash") or ""),
+                qr_merchant_ref=str(existing_payment.get("qr_merchant_ref") or _merchant_reference(order_id)),
                 auto_confirm_enabled=auto_enabled,
             )
             if refreshed and refreshed.get("payment"):
@@ -118,7 +155,8 @@ def bakong_qr():
                 "qr_payload": existing_payment.get("qr_payload"),
                 "qr_md5": existing_payment.get("qr_md5"),
                 "qr_short_hash": existing_payment.get("qr_short_hash"),
-                "amount": f"{(int(order.get('total_cents', 0)) / 100):.2f}" if (order.get("currency") or "USD") != "KHR" else str(int(round(int(order.get("total_cents", 0)) / 100))),
+                "merchant_ref": existing_payment.get("qr_merchant_ref"),
+                "amount": _order_amount_string(order),
                 "currency": order.get("currency") or "USD",
                 "auto_confirm_enabled": bool(existing_payment.get("auto_confirm_enabled")),
             }
@@ -135,14 +173,16 @@ def bakong_qr():
         )
 
     currency = order.get("currency") or "USD"
-    total_cents = int(order.get("total_cents", 0))
-    if currency == "KHR":
-        amount_str = str(int(round(total_cents / 100)))
-    else:
-        amount_str = f"{(total_cents / 100):.2f}"
+    amount_str = _order_amount_string(order)
+    merchant_reference = _merchant_reference(order_id)
 
     try:
-        qr_payload = with_amount(base, amount=amount_str, point_of_initiation_method="12")
+        qr_payload = with_amount(
+            base,
+            amount=amount_str,
+            point_of_initiation_method="12",
+            merchant_reference=merchant_reference,
+        )
     except EmvQrError as e:
         return api_error(f"Invalid BAKONG_KHQR_BASE: {e}", 500)
 
@@ -157,6 +197,7 @@ def bakong_qr():
         qr_payload=qr_payload,
         qr_md5=md5_hash,
         qr_short_hash=short_hash,
+        qr_merchant_ref=merchant_reference,
         auto_confirm_enabled=auto_enabled,
     )
 
@@ -165,6 +206,7 @@ def bakong_qr():
             "qr_payload": qr_payload,
             "qr_md5": md5_hash,
             "qr_short_hash": short_hash,
+            "merchant_ref": merchant_reference,
             "amount": amount_str,
             "currency": currency,
             "auto_confirm_enabled": auto_enabled,
@@ -263,3 +305,76 @@ def bakong_check():
             "message": "Payment confirmed automatically.",
         }
     )
+
+
+@payments_bp.post("/aba/webhook/<webhook_token>")
+@payments_bp.post("/payway/webhook/<webhook_token>")
+def aba_webhook(webhook_token: str):
+    expected_token = _aba_webhook_token()
+    if not expected_token:
+        return api_error("ABA_WEBHOOK_TOKEN is not configured.", 501)
+    if webhook_token != expected_token:
+        return api_error("Unauthorized.", 401)
+
+    payload = request.get_json(silent=True) or {}
+    merchant_ref = str(payload.get("merchant_ref") or "").strip()
+    if not merchant_ref:
+        return api_error("merchant_ref is required.", 400)
+
+    payment = get_payment_by_merchant_ref(merchant_ref)
+    if not payment:
+        return jsonify({"ok": True, "ignored": True, "message": "Unknown merchant_ref."})
+
+    order_id = int(payment.get("order_id", 0))
+    state = read_state()
+    order = next((row for row in state["orders"] if int(row.get("id", 0)) == order_id), None)
+    if not order:
+        return jsonify({"ok": True, "ignored": True, "message": "Order no longer exists."})
+
+    if order.get("status") == "paid":
+        return jsonify({"ok": True, "order": {"id": order_id, "status": "paid"}})
+
+    status_code = int(payload.get("payment_status_code", -1))
+    status_text = str(payload.get("payment_status") or "").upper()
+    if status_code != 0 and status_text != "APPROVED":
+        return jsonify({"ok": True, "ignored": True, "message": "Payment not approved."})
+
+    webhook_currency = str(payload.get("original_currency") or payload.get("payment_currency") or "USD").upper()
+    order_currency = str(order.get("currency") or "USD").upper()
+    webhook_amount_cents = _webhook_amount_to_cents(payload)
+    order_amount_cents = int(order.get("total_cents", 0))
+    if webhook_currency != order_currency or webhook_amount_cents != order_amount_cents:
+        return api_error("Webhook payment amount/currency does not match the order.", 409)
+
+    confirmed = confirm_order_payment(
+        order_id,
+        provider_ref=str(payload.get("transaction_id") or payload.get("bank_ref") or merchant_ref),
+        provider="aba_payway_webhook",
+        payment_details={
+            "payment_status_code": status_code,
+            "payment_status": payload.get("payment_status"),
+            "bank_ref": payload.get("bank_ref"),
+            "transaction_id": payload.get("transaction_id"),
+            "apv": payload.get("apv"),
+            "payer_account": payload.get("payer_account"),
+            "payer_name": payload.get("payer_name"),
+            "bank_name": payload.get("bank_name"),
+            "payment_type": payload.get("payment_type"),
+            "merchant_ref": merchant_ref,
+            "webhook_confirmed_at": utcnow_iso(),
+            "auto_confirm_source": "aba_webhook",
+        },
+    )
+    order_payload = confirmed["order"] if confirmed else {"id": order_id, "status": "paid"}
+    payment_payload = confirmed["payment"] if confirmed else get_latest_payment(order_id)
+    send_payment_event(
+        "auto_confirmed",
+        order=order_payload,
+        payment=payment_payload or {},
+        extra_lines=[
+            f"Merchant Ref: {merchant_ref}",
+            f"Bank Ref: {payload.get('bank_ref') or '-'}",
+            f"Payment Type: {payload.get('payment_type') or '-'}",
+        ],
+    )
+    return jsonify({"ok": True, "order": {"id": order_id, "status": "paid"}})
