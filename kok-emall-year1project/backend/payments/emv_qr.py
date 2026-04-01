@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import time
 
 
 class EmvQrError(ValueError):
@@ -97,21 +98,47 @@ def upsert_tag(tlvs: list[EmvTlv], tag: str, value: bytes, *, after_tag: str | N
     return tlvs
 
 
-def with_amount(base_payload: str, *, amount: str, point_of_initiation_method: str = "12") -> str:
+def _timestamp_value(*, point_of_initiation_method: str, expiration_days: int = 1) -> bytes:
+    timestamp_ms = str(int(time.time() * 1000))
+    value = f"00{len(timestamp_ms):02d}{timestamp_ms}"
+
+    if point_of_initiation_method == "12":
+        if expiration_days < 1:
+            raise EmvQrError("expiration_days must be at least 1 for dynamic KHQR payloads.")
+        expiration_ms = str(int(time.time() * 1000) + (expiration_days * 86400 * 1000))
+        value += f"01{len(expiration_ms):02d}{expiration_ms}"
+
+    return value.encode("ascii")
+
+
+def with_amount(
+    base_payload: str,
+    *,
+    amount: str,
+    point_of_initiation_method: str = "12",
+    expiration_days: int = 1,
+) -> str:
     """
     Takes a base EMV/KHQR payload, injects/updates:
     - Tag 01 (point of initiation method): "11" static or "12" dynamic
     - Tag 54 (transaction amount)
+    - Tag 99 (timestamp/expiration for dynamic KHQR compatibility)
     Recomputes Tag 63 CRC.
     """
     tlvs = parse_emv_tlv(base_payload)
     tlvs = remove_tag(tlvs, "63")
+    tlvs = remove_tag(tlvs, "99")
 
     upsert_tag(tlvs, "01", point_of_initiation_method.encode("ascii"), after_tag="00")
     upsert_tag(tlvs, "54", amount.encode("ascii"), after_tag="53")
+    upsert_tag(
+        tlvs,
+        "99",
+        _timestamp_value(point_of_initiation_method=point_of_initiation_method, expiration_days=expiration_days),
+        after_tag="62",
+    )
 
     payload_without_crc_value = serialize_emv_tlv(tlvs) + b"6304"
     crc_hex = compute_crc_hex(payload_without_crc_value)
     final_bytes = payload_without_crc_value + crc_hex.encode("ascii")
     return final_bytes.decode("utf-8")
-
