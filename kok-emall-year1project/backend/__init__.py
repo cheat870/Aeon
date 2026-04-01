@@ -13,6 +13,7 @@ from backend.routes.auth import auth_bp
 from backend.routes.cart import cart_bp
 from backend.routes.orders import orders_bp
 from backend.routes.payments import payments_bp
+from backend.routes.products import products_bp
 from backend.telegram_admin_bot import start_background_bot
 
 
@@ -49,6 +50,7 @@ def create_app() -> Flask:
     app.register_blueprint(cart_bp)
     app.register_blueprint(orders_bp)
     app.register_blueprint(payments_bp)
+    app.register_blueprint(products_bp)
 
     @app.get("/api/health")
     def _health():

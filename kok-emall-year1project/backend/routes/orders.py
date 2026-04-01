@@ -3,7 +3,7 @@ from __future__ import annotations
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from backend.store import next_id, read_state, sort_by_created, update_state, utcnow_iso
+from backend.store import available_stock_for_product, get_product_row, next_id, read_state, sort_by_created, update_state, utcnow_iso
 from backend.utils import api_error
 
 orders_bp = Blueprint("orders", __name__, url_prefix="/api/orders")
@@ -25,6 +25,7 @@ def _order_to_dict(order: dict, items: list[dict] | None = None) -> dict:
             {
                 "id": int(item["id"]),
                 "product": {
+                    "id": int(item.get("product_id", 0)) or None,
                     "name": item.get("product_name"),
                     "brand": item.get("product_brand"),
                     "image_url": item.get("product_image_url"),
@@ -57,6 +58,26 @@ def create_order():
         if not cart_items:
             return {"error": "empty"}
 
+        requested_quantities: dict[int, int] = {}
+        for cart_item in cart_items:
+            product_id = int(cart_item.get("product_id") or 0)
+            if not product_id:
+                continue
+            requested_quantities[product_id] = requested_quantities.get(product_id, 0) + int(cart_item.get("quantity", 0))
+
+        for product_id, requested_quantity in requested_quantities.items():
+            product = get_product_row(state, product_id)
+            if not product or not bool(product.get("is_active", True)):
+                missing_item = next((item for item in cart_items if int(item.get("product_id") or 0) == product_id), None)
+                return {"error": "missing", "product_name": missing_item.get("product_name") if missing_item else "Product"}
+            available_stock = available_stock_for_product(state, product_id)
+            if requested_quantity > available_stock:
+                return {
+                    "error": "stock",
+                    "product_name": product.get("name"),
+                    "available_stock": available_stock,
+                }
+
         subtotal_cents = sum(int(item.get("unit_price_cents", 0)) * int(item.get("quantity", 0)) for item in cart_items)
         timestamp = utcnow_iso()
         order = {
@@ -80,6 +101,7 @@ def create_order():
             order_item = {
                 "id": next_id(state, "order_items"),
                 "order_id": int(order["id"]),
+                "product_id": int(cart_item.get("product_id", 0)) or None,
                 "product_name": cart_item.get("product_name"),
                 "product_brand": cart_item.get("product_brand"),
                 "product_image_url": cart_item.get("product_image_url"),
@@ -110,6 +132,14 @@ def create_order():
         )
     if result.get("error") == "empty":
         return api_error("Your cart is empty.", 400)
+    if result.get("error") == "missing":
+        return api_error(f"{result['product_name']} is no longer available.", 409, code="PRODUCT_UNAVAILABLE")
+    if result.get("error") == "stock":
+        return api_error(
+            f"Only {result['available_stock']} item(s) left in stock for {result['product_name']}.",
+            409,
+            code="OUT_OF_STOCK",
+        )
 
     return jsonify({"order": _order_to_dict(result["order"], result["items"])}), 201
 

@@ -12,6 +12,113 @@ StoreState = dict[str, Any]
 StoreMutator = Callable[[StoreState], Any]
 
 _LOCK = threading.RLock()
+_ID_COLLECTIONS = {
+    "users": "users",
+    "cart_items": "cart_items",
+    "orders": "orders",
+    "order_items": "order_items",
+    "payments": "payments",
+    "auth_events": "auth_events",
+    "products": "products",
+}
+_DEFAULT_PRODUCT_ROWS = [
+    {
+        "id": 1,
+        "name": "Supreme x Nike Air Max 1 Releasing In 2025",
+        "brand": "nike",
+        "description": "Limited sneaker drop with bold streetwear styling.",
+        "image_url": "eMall-photo/nike.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "updated_at": "2026-01-01T00:00:00+00:00",
+    },
+    {
+        "id": 2,
+        "name": "Air Jordan 5 Fire Red",
+        "brand": "nike",
+        "description": "Classic Jordan silhouette with iconic Fire Red colorway.",
+        "image_url": "eMall-photo/jordan.jpg",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:01:00+00:00",
+        "updated_at": "2026-01-01T00:01:00+00:00",
+    },
+    {
+        "id": 3,
+        "name": "Nike Air Max 95 OG",
+        "brand": "nike",
+        "description": "Retro Air Max design with everyday comfort.",
+        "image_url": "eMall-photo/nike1.jpg",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:02:00+00:00",
+        "updated_at": "2026-01-01T00:02:00+00:00",
+    },
+    {
+        "id": 4,
+        "name": "Nike Kobe Release Dates 2025",
+        "brand": "nike",
+        "description": "Basketball-inspired sneaker built for standout looks.",
+        "image_url": "eMall-photo/sneaker.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:03:00+00:00",
+        "updated_at": "2026-01-01T00:03:00+00:00",
+    },
+    {
+        "id": 5,
+        "name": "Summer Shirt",
+        "brand": "T-shirt",
+        "description": "Lightweight shirt for hot weather and daily wear.",
+        "image_url": "eMall-photo/summer.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:04:00+00:00",
+        "updated_at": "2026-01-01T00:04:00+00:00",
+    },
+    {
+        "id": 6,
+        "name": "Men's Summer Shirt",
+        "brand": "T-shirt",
+        "description": "Soft casual shirt for relaxed summer styling.",
+        "image_url": "eMall-photo/summer2.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:05:00+00:00",
+        "updated_at": "2026-01-01T00:05:00+00:00",
+    },
+    {
+        "id": 7,
+        "name": "Hottest T-shirt for All Generation",
+        "brand": "T-shirt",
+        "description": "Comfort-fit tee made for all-day wear.",
+        "image_url": "eMall-photo/summer3.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:06:00+00:00",
+        "updated_at": "2026-01-01T00:06:00+00:00",
+    },
+    {
+        "id": 8,
+        "name": "Christmas Summer Shirt",
+        "brand": "T-shirt",
+        "description": "Festive shirt with a bright seasonal look.",
+        "image_url": "eMall-photo/summer4.webp",
+        "unit_price_cents": 100,
+        "stock_quantity": 20,
+        "is_active": True,
+        "created_at": "2026-01-01T00:07:00+00:00",
+        "updated_at": "2026-01-01T00:07:00+00:00",
+    },
+]
 _DEFAULT_STATE: StoreState = {
     "meta": {
         "next_ids": {
@@ -21,6 +128,7 @@ _DEFAULT_STATE: StoreState = {
             "order_items": 1,
             "payments": 1,
             "auth_events": 1,
+            "products": 1,
         }
     },
     "users": [],
@@ -29,6 +137,7 @@ _DEFAULT_STATE: StoreState = {
     "order_items": [],
     "payments": [],
     "auth_events": [],
+    "products": [],
 }
 
 
@@ -44,29 +153,53 @@ def _clone_default() -> StoreState:
     return json.loads(json.dumps(_DEFAULT_STATE))
 
 
+def _clone_default_products() -> list[dict[str, Any]]:
+    return json.loads(json.dumps(_DEFAULT_PRODUCT_ROWS))
+
+
 def _ensure_shape(state: StoreState) -> StoreState:
     if not isinstance(state, dict):
-        return _clone_default()
+        state = _clone_default()
 
     state.setdefault("meta", {})
     state["meta"].setdefault("next_ids", {})
-    for key, value in _DEFAULT_STATE["meta"]["next_ids"].items():
-        state["meta"]["next_ids"].setdefault(key, value)
+    for key in _DEFAULT_STATE["meta"]["next_ids"]:
+        state["meta"]["next_ids"].setdefault(key, 1)
 
     for key in ("users", "cart_items", "orders", "order_items", "payments", "auth_events"):
         if not isinstance(state.get(key), list):
             state[key] = []
+    if not isinstance(state.get("products"), list) or not state.get("products"):
+        state["products"] = _clone_default_products()
+
+    for product in state["products"]:
+        product["id"] = int(product.get("id", 0))
+        product["name"] = str(product.get("name") or "").strip()
+        product["brand"] = str(product.get("brand") or "").strip() or None
+        product["description"] = str(product.get("description") or "").strip() or None
+        product["image_url"] = str(product.get("image_url") or "").strip() or None
+        product["unit_price_cents"] = int(product.get("unit_price_cents", 0))
+        product["stock_quantity"] = max(0, int(product.get("stock_quantity", 0)))
+        product["is_active"] = bool(product.get("is_active", True))
+        product["created_at"] = str(product.get("created_at") or utcnow_iso())
+        product["updated_at"] = str(product.get("updated_at") or product["created_at"])
+
+    for key, collection_name in _ID_COLLECTIONS.items():
+        rows = state.get(collection_name) or []
+        max_existing = max((int(row.get("id", 0)) for row in rows if isinstance(row, dict)), default=0)
+        state["meta"]["next_ids"][key] = max(int(state["meta"]["next_ids"].get(key, 1)), max_existing + 1)
+
     return state
 
 
 def _load_no_lock() -> StoreState:
     path = store_path()
     if not path.exists():
-        return _clone_default()
+        return _ensure_shape(_clone_default())
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except Exception:
-        return _clone_default()
+        return _ensure_shape(_clone_default())
     return _ensure_shape(raw)
 
 
@@ -99,6 +232,58 @@ def sort_by_created(rows: list[dict[str, Any]], *, reverse: bool = False) -> lis
     return sorted(rows, key=lambda row: (str(row.get("created_at") or ""), int(row.get("id") or 0)), reverse=reverse)
 
 
+def get_product_row(state: StoreState, product_id: int) -> dict[str, Any] | None:
+    return next((row for row in state["products"] if int(row.get("id", 0)) == int(product_id)), None)
+
+
+def reserved_stock_for_product(state: StoreState, product_id: int, *, exclude_order_id: int | None = None) -> int:
+    product = get_product_row(state, product_id)
+    product_name = str(product.get("name") or "").strip() if product else ""
+    reserved_order_ids = {
+        int(order.get("id", 0))
+        for order in state["orders"]
+        if order.get("status") in {"pending_payment", "paid"} and int(order.get("id", 0)) != int(exclude_order_id or 0)
+    }
+    return sum(
+        int(item.get("quantity", 0))
+        for item in state["order_items"]
+        if int(item.get("order_id", 0)) in reserved_order_ids
+        and (
+            int(item.get("product_id", 0)) == int(product_id)
+            or (not int(item.get("product_id", 0)) and product_name and str(item.get("product_name") or "").strip() == product_name)
+        )
+    )
+
+
+def available_stock_for_product(state: StoreState, product_id: int, *, exclude_order_id: int | None = None) -> int:
+    product = get_product_row(state, product_id)
+    if not product:
+        return 0
+    return max(0, int(product.get("stock_quantity", 0)) - reserved_stock_for_product(state, product_id, exclude_order_id=exclude_order_id))
+
+
+def serialize_product(state: StoreState, product: dict[str, Any], *, admin: bool = False) -> dict[str, Any]:
+    product_id = int(product.get("id", 0))
+    reserved_stock = reserved_stock_for_product(state, product_id)
+    available_stock = max(0, int(product.get("stock_quantity", 0)) - reserved_stock)
+    payload = {
+        "id": product_id,
+        "name": product.get("name"),
+        "brand": product.get("brand"),
+        "description": product.get("description"),
+        "image_url": product.get("image_url"),
+        "unit_price_cents": int(product.get("unit_price_cents", 0)),
+        "stock_quantity": int(product.get("stock_quantity", 0)),
+        "available_stock": available_stock,
+        "is_active": bool(product.get("is_active", True)),
+        "created_at": product.get("created_at"),
+        "updated_at": product.get("updated_at"),
+    }
+    if admin:
+        payload["reserved_stock"] = reserved_stock
+    return payload
+
+
 def get_user_by_id(user_id: int) -> dict[str, Any] | None:
     state = read_state()
     return next((deepcopy(user) for user in state["users"] if int(user.get("id", 0)) == int(user_id)), None)
@@ -108,6 +293,78 @@ def get_user_by_email(email: str) -> dict[str, Any] | None:
     normalized = str(email or "").strip().lower()
     state = read_state()
     return next((deepcopy(user) for user in state["users"] if user.get("email") == normalized), None)
+
+
+def list_products(limit: int | None = None, *, include_inactive: bool = False, query: str | None = None, admin: bool = False) -> list[dict[str, Any]]:
+    normalized_query = str(query or "").strip().lower()
+    state = read_state()
+    rows = sort_by_created([deepcopy(product) for product in state["products"]], reverse=True)
+
+    if not include_inactive:
+        rows = [product for product in rows if bool(product.get("is_active", True))]
+    if normalized_query:
+        rows = [
+            product
+            for product in rows
+            if normalized_query in str(product.get("name") or "").lower()
+            or normalized_query in str(product.get("brand") or "").lower()
+            or normalized_query in str(product.get("description") or "").lower()
+            or normalized_query in str(product.get("id") or "")
+        ]
+    if limit is not None:
+        rows = rows[:limit]
+    return [serialize_product(state, product, admin=admin) for product in rows]
+
+
+def get_product(product_id: int, *, include_inactive: bool = False, admin: bool = False) -> dict[str, Any] | None:
+    state = read_state()
+    product = next((deepcopy(row) for row in state["products"] if int(row.get("id", 0)) == int(product_id)), None)
+    if not product:
+        return None
+    if not include_inactive and not bool(product.get("is_active", True)):
+        return None
+    return serialize_product(state, product, admin=admin)
+
+
+def add_product(
+    *,
+    name: str,
+    unit_price_cents: int,
+    stock_quantity: int,
+    brand: str | None = None,
+    image_url: str | None = None,
+    description: str | None = None,
+) -> dict[str, Any]:
+    def mutator(state: StoreState) -> dict[str, Any]:
+        timestamp = utcnow_iso()
+        product = {
+            "id": next_id(state, "products"),
+            "name": name.strip(),
+            "brand": str(brand or "").strip() or None,
+            "description": str(description or "").strip() or None,
+            "image_url": str(image_url or "").strip() or None,
+            "unit_price_cents": int(unit_price_cents),
+            "stock_quantity": max(0, int(stock_quantity)),
+            "is_active": True,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        }
+        state["products"].append(product)
+        return serialize_product(state, product, admin=True)
+
+    return update_state(mutator)
+
+
+def set_product_stock(product_id: int, stock_quantity: int) -> dict[str, Any] | None:
+    def mutator(state: StoreState) -> dict[str, Any] | None:
+        product = get_product_row(state, product_id)
+        if not product:
+            return None
+        product["stock_quantity"] = max(0, int(stock_quantity))
+        product["updated_at"] = utcnow_iso()
+        return serialize_product(state, product, admin=True)
+
+    return update_state(mutator)
 
 
 def append_auth_event(
@@ -248,6 +505,7 @@ def get_store_stats() -> dict[str, int]:
     return {
         "users_total": len(state["users"]),
         "users_online": sum(1 for user in state["users"] if user.get("status") == "online"),
+        "products_total": len([product for product in state["products"] if bool(product.get("is_active", True))]),
         "orders_total": len(state["orders"]),
         "orders_pending": sum(1 for order in state["orders"] if order.get("status") == "pending_payment"),
         "orders_paid": sum(1 for order in state["orders"] if order.get("status") == "paid"),

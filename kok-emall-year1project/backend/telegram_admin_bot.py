@@ -12,15 +12,20 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from backend.store import (
+    add_product,
     confirm_order_payment,
+    get_product,
     get_order_details,
     get_store_stats,
     get_user_admin_details,
     list_auth_events,
     list_orders,
     list_pending_orders,
+    list_products,
     list_users,
+    set_product_stock,
 )
+from backend.utils import parse_price_to_cents
 
 _BOT_THREAD: threading.Thread | None = None
 _BOT_LOCK = threading.Lock()
@@ -111,6 +116,9 @@ def _help_text() -> str:
             "/users - list recent users (admin)",
             "/user <id|email> - show one user summary (admin)",
             "/history [query] - list recent auth events (admin)",
+            "/products [query] - list products with stock (admin)",
+            "/addproduct <name | price | stock | brand | image_url | description> - add a product (admin)",
+            "/stock <product_id> <stock> - set stock quantity (admin)",
             "/orders [status] - list recent orders (admin)",
             "/pending - list latest pending_payment orders (admin)",
             "/invoice <order_id> - show invoice details (admin)",
@@ -227,12 +235,88 @@ def _cmd_orders(status: str | None = None) -> str:
     return "\n".join(lines)
 
 
+def _cmd_products(query: str | None = None) -> str:
+    rows = list_products(limit=25, include_inactive=True, query=query, admin=True)
+    if not rows:
+        return "No products found."
+
+    heading = "Products"
+    if query:
+        heading += f" for '{query}'"
+    lines = [heading + ":"]
+    for product in rows:
+        lines.append(
+            f"- #{product['id']} | {product.get('name')} | {_money(int(product.get('unit_price_cents', 0)), 'USD')} | "
+            f"stock {product.get('stock_quantity', 0)} | available {product.get('available_stock', 0)} | "
+            f"{'active' if product.get('is_active') else 'inactive'}"
+        )
+    return "\n".join(lines)
+
+
+def _cmd_addproduct(argument_text: str) -> str:
+    parts = [part.strip() for part in argument_text.split("|")]
+    if len(parts) < 3:
+        return "Usage: /addproduct <name | price | stock | brand | image_url | description>"
+
+    name = parts[0]
+    if not name:
+        return "Product name is required."
+
+    try:
+        unit_price_cents = parse_price_to_cents(parts[1])
+    except ValueError:
+        return "Invalid price. Example: 1 or 1.50"
+
+    try:
+        stock_quantity = int(parts[2])
+    except ValueError:
+        return "Stock must be a whole number."
+    if stock_quantity < 0:
+        return "Stock cannot be negative."
+
+    brand = parts[3] if len(parts) > 3 and parts[3] else None
+    image_url = parts[4] if len(parts) > 4 and parts[4] else None
+    description = parts[5] if len(parts) > 5 and parts[5] else None
+
+    product = add_product(
+        name=name,
+        unit_price_cents=unit_price_cents,
+        stock_quantity=stock_quantity,
+        brand=brand,
+        image_url=image_url,
+        description=description,
+    )
+    return (
+        f"Added product #{product['id']}.\n"
+        f"Name: {product.get('name')}\n"
+        f"Price: {_money(int(product.get('unit_price_cents', 0)), 'USD')}\n"
+        f"Stock: {product.get('stock_quantity', 0)}"
+    )
+
+
+def _cmd_stock(product_id: int, stock_quantity: int) -> str:
+    if stock_quantity < 0:
+        return "Stock cannot be negative."
+
+    product = set_product_stock(product_id, stock_quantity)
+    if not product:
+        return "Product not found."
+
+    return (
+        f"Updated stock for product #{product['id']}.\n"
+        f"Name: {product.get('name')}\n"
+        f"Stock: {product.get('stock_quantity', 0)}\n"
+        f"Available now: {product.get('available_stock', 0)}"
+    )
+
+
 def _cmd_stats() -> str:
     stats = get_store_stats()
     return "\n".join(
         [
             "Store stats:",
             f"- Users: {stats['users_total']} total | {stats['users_online']} online",
+            f"- Products: {stats['products_total']}",
             f"- Orders: {stats['orders_total']} total | {stats['orders_pending']} pending | {stats['orders_paid']} paid",
             f"- Payments: {stats['payments_total']}",
             f"- Auth events: {stats['auth_events_total']}",
@@ -369,7 +453,10 @@ def run_forever(*, verbose: bool = True, stop_event: threading.Event | None = No
                 chat_id = int((message.get("chat") or {}).get("id"))
                 user_id = int((message.get("from") or {}).get("id"))
 
-                cmd, *args = text.split()
+                command_parts = text.split(maxsplit=1)
+                cmd = command_parts[0]
+                argument_text = command_parts[1].strip() if len(command_parts) > 1 else ""
+                args = argument_text.split()
                 if not cmd.startswith("/"):
                     continue
                 cmd = cmd.split("@", 1)[0].lower()
@@ -407,8 +494,36 @@ def run_forever(*, verbose: bool = True, stop_event: threading.Event | None = No
                 if cmd == "/history":
                     if not _ensure_admin(token, chat_id, user_id, admin_ids):
                         continue
-                    query = " ".join(args).strip() or None
+                    query = argument_text or None
                     _send_text(token, chat_id, _cmd_history(query))
+                    continue
+
+                if cmd == "/products":
+                    if not _ensure_admin(token, chat_id, user_id, admin_ids):
+                        continue
+                    query = argument_text or None
+                    _send_text(token, chat_id, _cmd_products(query))
+                    continue
+
+                if cmd == "/addproduct":
+                    if not _ensure_admin(token, chat_id, user_id, admin_ids):
+                        continue
+                    _send_text(token, chat_id, _cmd_addproduct(argument_text))
+                    continue
+
+                if cmd == "/stock":
+                    if not _ensure_admin(token, chat_id, user_id, admin_ids):
+                        continue
+                    if len(args) < 2:
+                        _send_text(token, chat_id, "Usage: /stock <product_id> <stock>")
+                        continue
+                    try:
+                        product_id = int(args[0])
+                        stock_quantity = int(args[1])
+                    except ValueError:
+                        _send_text(token, chat_id, "product_id and stock must be numbers.")
+                        continue
+                    _send_text(token, chat_id, _cmd_stock(product_id, stock_quantity))
                     continue
 
                 if cmd == "/orders":

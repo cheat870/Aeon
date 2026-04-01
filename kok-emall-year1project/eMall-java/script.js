@@ -2,8 +2,12 @@
   const STORAGE_TOKEN_KEY = 'emall_access_token';
   const STORAGE_USER_KEY = 'emall_user';
   const STORAGE_GUEST_ID_KEY = 'emall_guest_id';
+  const PRODUCT_FALLBACK_IMAGE = 'eMall-photo/screenshot 2025-07-28 111552.png';
 
   let paymentPollTimer = null;
+  let productCatalogPromise = null;
+  let productCatalog = [];
+  let productById = new Map();
 
   function getAccessToken() {
     return localStorage.getItem(STORAGE_TOKEN_KEY);
@@ -54,6 +58,51 @@
     } catch {
       return `$${amount.toFixed(2)}`;
     }
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function productImageUrl(product) {
+    return product?.image_url || PRODUCT_FALLBACK_IMAGE;
+  }
+
+  function stockLabel(product) {
+    const available = Number(product?.available_stock ?? 0);
+    if (available <= 0) return 'Out of stock';
+    return `In stock: ${available}`;
+  }
+
+  function ensureCatalogStyles() {
+    if (document.getElementById('emall-catalog-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'emall-catalog-styles';
+    style.textContent = `
+      .emall-stock {
+        margin-top: 6px;
+        font-size: 13px;
+        color: rgb(24, 145, 145);
+      }
+      .emall-stock.out {
+        color: #b00020;
+      }
+      .emall-add-to-cart.disabled {
+        opacity: 0.45;
+        pointer-events: none;
+      }
+      .emall-product-empty {
+        text-align: center;
+        color: gray;
+        padding: 20px 0;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   function parsePriceTextToCents(text) {
@@ -298,13 +347,101 @@
     }
   }
 
+  async function loadProductCatalog(force = false) {
+    if (!force && productCatalogPromise) return productCatalogPromise;
+
+    productCatalogPromise = (async () => {
+      try {
+        const data = await apiFetch('/api/products');
+        productCatalog = Array.isArray(data?.products) ? data.products : [];
+        productById = new Map(productCatalog.map((product) => [Number(product.id), product]));
+        return productCatalog;
+      } catch {
+        productCatalog = [];
+        productById = new Map();
+        return [];
+      }
+    })();
+
+    return productCatalogPromise;
+  }
+
+  function productCardHtml(product) {
+    const available = Number(product?.available_stock ?? 0);
+    const soldOut = available <= 0;
+    const name = escapeHtml(product?.name || 'Item');
+    const brand = escapeHtml(product?.brand || 'Product');
+    const imageUrl = escapeHtml(productImageUrl(product));
+    const stockClass = soldOut ? 'emall-stock out' : 'emall-stock';
+    const cartClass = soldOut ? 'emall-add-to-cart disabled' : 'emall-add-to-cart';
+    const price = escapeHtml(formatMoney(product?.unit_price_cents || 0, 'USD'));
+
+    return `
+      <div class="pro" data-product-id="${Number(product?.id || 0)}" tabindex="0">
+        <img src="${imageUrl}" alt="${name}">
+        <div class="des">
+          <span>${brand}</span>
+          <h3>${name}</h3>
+          <div class="star">
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+            <i class="fas fa-star"></i>
+          </div>
+          <h2>${price}</h2>
+          <p class="${stockClass}">${escapeHtml(stockLabel(product))}</p>
+        </div>
+        <a href="#" class="${cartClass}" aria-label="Add ${name} to cart"><i class="fa-solid fa-cart-shopping"></i></a>
+      </div>
+    `;
+  }
+
+  function renderProductCards(container, products) {
+    if (!container) return;
+    ensureCatalogStyles();
+    if (!products.length) {
+      container.innerHTML = '<p class="emall-product-empty">No products available yet.</p>';
+      return;
+    }
+    container.innerHTML = products.map(productCardHtml).join('');
+  }
+
+  function productDetailUrl(productId) {
+    return `sproduct.html?product_id=${encodeURIComponent(productId)}`;
+  }
+
+  function bindProductCardHandlers(root = document) {
+    root.querySelectorAll('.pro[data-product-id]').forEach((card) => {
+      if (card.dataset.emallBound === '1') return;
+      card.dataset.emallBound = '1';
+
+      const productId = Number(card.dataset.productId || 0);
+      card.addEventListener('click', () => {
+        if (productId) window.location.href = productDetailUrl(productId);
+      });
+      card.addEventListener('keydown', (event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && productId) {
+          event.preventDefault();
+          window.location.href = productDetailUrl(productId);
+        }
+      });
+    });
+  }
+
   function productFromProCard(proEl) {
+    const productId = Number(proEl?.dataset?.productId || 0);
+    if (productId && productById.has(productId)) {
+      return productById.get(productId);
+    }
+
     const img = proEl.querySelector('img');
     const brand = proEl.querySelector('.des span');
     const name = proEl.querySelector('.des h3');
     const price = proEl.querySelector('.des h2');
 
     return {
+      id: productId || null,
       name: name ? name.textContent.trim() : 'Item',
       brand: brand ? brand.textContent.trim() : null,
       image_url: img ? img.getAttribute('src') : null,
@@ -313,10 +450,17 @@
   }
 
   function productFromSingleProductPage() {
+    const details = document.querySelector('.single-pro-details');
+    const productId = Number(details?.dataset?.productId || 0);
+    if (productId && productById.has(productId)) {
+      return productById.get(productId);
+    }
+
     const name = document.querySelector('.single-pro-details h4');
     const price = document.querySelector('.single-pro-details h2');
     const img = document.getElementById('MainImg');
     return {
+      id: productId || null,
       name: name ? name.textContent.trim() : 'Item',
       brand: null,
       image_url: img ? img.getAttribute('src') : null,
@@ -333,7 +477,10 @@
     try {
       await apiFetch('/api/cart/items', {
         method: 'POST',
-        body: { product, quantity },
+        body:
+          product?.id
+            ? { product_id: product.id, quantity }
+            : { product, quantity },
       });
     } catch (err) {
       if (err?.status === 401 || err?.status === 422) {
@@ -348,10 +495,14 @@
   }
 
   function bindAddToCartButtons() {
+    bindProductCardHandlers();
+
     const productCards = document.querySelectorAll('.pro');
     for (const card of productCards) {
-      const cartLink = card.querySelector('a');
+      const cartLink = card.querySelector('.emall-add-to-cart, a');
       if (!cartLink) continue;
+      if (cartLink.dataset.emallBound === '1') continue;
+      cartLink.dataset.emallBound = '1';
 
       cartLink.addEventListener('click', async (e) => {
         e.preventDefault();
@@ -366,6 +517,8 @@
 
     const addBtn = document.querySelector('.single-pro-details button.normal');
     if (addBtn) {
+      if (addBtn.dataset.emallBound === '1') return;
+      addBtn.dataset.emallBound = '1';
       addBtn.addEventListener('click', async (e) => {
         e.preventDefault();
         const qtyInput = document.querySelector('.single-pro-details input[type="number"]');
@@ -376,6 +529,124 @@
           toast(err?.message || 'Failed to add to cart');
         }
       });
+    }
+  }
+
+  function bindSingleProductGallery() {
+    const mainImg = document.getElementById('MainImg');
+    if (!mainImg) return;
+    document.querySelectorAll('.small-img').forEach((img) => {
+      if (img.dataset.emallBound === '1') return;
+      img.dataset.emallBound = '1';
+      img.addEventListener('click', () => {
+        mainImg.src = img.getAttribute('src') || mainImg.src;
+      });
+    });
+  }
+
+  async function renderIndexProducts(products) {
+    const containers = document.querySelectorAll('#product1 .pro-container');
+    if (!containers.length) return;
+
+    const featured = products.slice(0, 8);
+    let arrivals = products.slice(8, 16);
+    if (!arrivals.length) arrivals = [...products].reverse().slice(0, Math.min(8, products.length));
+
+    renderProductCards(containers[0], featured);
+    if (containers[1]) renderProductCards(containers[1], arrivals);
+    bindAddToCartButtons();
+  }
+
+  async function renderShopProducts(products) {
+    const container = document.querySelector('#product1 .pro-container');
+    if (!container) return;
+    renderProductCards(container, products);
+    bindAddToCartButtons();
+  }
+
+  async function renderSingleProduct(products) {
+    const section = document.getElementById('prodetials');
+    if (!section) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedProductId = Number(params.get('product_id') || 0);
+    const currentProduct =
+      (requestedProductId && products.find((product) => Number(product.id) === requestedProductId)) || products[0];
+
+    if (!currentProduct) {
+      section.innerHTML = '<p class="emall-product-empty">Product not found.</p>';
+      return;
+    }
+
+    const imageUrl = productImageUrl(currentProduct);
+    const availableStock = Number(currentProduct.available_stock ?? 0);
+    const disabledAttr = availableStock <= 0 ? 'disabled' : '';
+    const buttonLabel = availableStock <= 0 ? 'Out of Stock' : 'Add to Cart';
+    const detailText = escapeHtml(
+      currentProduct.description || 'This product is ready for your next order.'
+    );
+
+    section.innerHTML = `
+      <div class="single-pro-image">
+        <img class="pro-image" src="${escapeHtml(imageUrl)}" id="MainImg" alt="${escapeHtml(currentProduct.name)}">
+        <div class="small-img-group">
+          ${new Array(4)
+            .fill(imageUrl)
+            .map(
+              (src) => `
+              <div class="small-img-col">
+                <img src="${escapeHtml(src)}" width="100%" class="small-img" alt="${escapeHtml(currentProduct.name)}">
+              </div>
+            `
+            )
+            .join('')}
+        </div>
+      </div>
+
+      <div class="single-pro-details" data-product-id="${Number(currentProduct.id)}">
+        <h6>Home / ${escapeHtml(currentProduct.brand || 'Product')}</h6>
+        <h4>${escapeHtml(currentProduct.name)}</h4>
+        <h2>${escapeHtml(formatMoney(currentProduct.unit_price_cents || 0, 'USD'))}</h2>
+        <p class="${availableStock <= 0 ? 'emall-stock out' : 'emall-stock'}">${escapeHtml(stockLabel(currentProduct))}</p>
+        <select>
+          <option>Select Size</option>
+          <option>XL</option>
+          <option>XXL</option>
+          <option>Small</option>
+          <option>Large</option>
+        </select>
+        <input type="number" value="1" min="1" max="${Math.max(availableStock, 1)}" ${disabledAttr}>
+        <button class="normal" ${disabledAttr}>${buttonLabel}</button>
+        <h4>Product Details</h4>
+        <span>${detailText}</span>
+      </div>
+    `;
+
+    const relatedProducts = products.filter((product) => Number(product.id) !== Number(currentProduct.id)).slice(0, 4);
+    const relatedContainer = document.querySelector('#product1 .pro-container');
+    if (relatedContainer) renderProductCards(relatedContainer, relatedProducts);
+
+    bindSingleProductGallery();
+    bindAddToCartButtons();
+  }
+
+  async function renderCatalogPages() {
+    const page = currentPagePath().toLowerCase();
+    if (!['index.html', 'shop.html', 'sproduct.html'].includes(page)) return;
+
+    const products = await loadProductCatalog();
+    if (!products.length) return;
+
+    if (page === 'index.html') {
+      await renderIndexProducts(products);
+      return;
+    }
+    if (page === 'shop.html') {
+      await renderShopProducts(products);
+      return;
+    }
+    if (page === 'sproduct.html') {
+      await renderSingleProduct(products);
     }
   }
 
@@ -893,6 +1164,7 @@
     await updateNavbarAuth();
     await refreshCartCount();
     bindCartLinksAuthGate();
+    await renderCatalogPages();
     bindAddToCartButtons();
     await bindAuthForms();
     preserveNextParamInAuthLinks();
