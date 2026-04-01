@@ -855,9 +855,11 @@
       const isPaid = order?.status === 'paid';
 
       let qrPayload = null;
+      let autoConfirmEnabled = false;
       try {
         const qrData = await apiFetch('/api/payments/bakong/qr', { method: 'POST', body: { order_id: order.id } });
         qrPayload = qrData?.qr_payload || null;
+        autoConfirmEnabled = Boolean(qrData?.auto_confirm_enabled);
       } catch (err) {
         qrPayload = null;
       }
@@ -909,7 +911,11 @@
 
             <h3 style="margin-top:16px;">Total: ${formatMoney(order.total_cents, currency)}</h3>
             ${invoiceButtonHtml}
-            <p style="margin-top:10px;color:gray;">After paying, please wait until the merchant confirms your payment.</p>
+            <p style="margin-top:10px;color:gray;">${
+              autoConfirmEnabled
+                ? 'After paying, please wait a few seconds while we confirm your payment automatically.'
+                : 'After paying, please wait until the merchant confirms your payment.'
+            }</p>
           </div>
         </div>
       `;
@@ -944,11 +950,17 @@
         refreshBtn.addEventListener('click', async (e) => {
           e.preventDefault();
           try {
-            const refreshed = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}`);
+            const refreshed = autoConfirmEnabled
+              ? await apiFetch('/api/payments/bakong/check', { method: 'POST', body: { order_id: order.id } })
+              : await apiFetch(`/api/orders/${encodeURIComponent(order.id)}`);
             if (refreshed?.order?.status === 'paid') {
               window.location.href = `invoice.html?order_id=${encodeURIComponent(order.id)}`;
             } else {
-              toast('Payment not confirmed yet.');
+              toast(
+                autoConfirmEnabled
+                  ? (refreshed?.message || 'Payment not found yet.')
+                  : 'Payment not confirmed yet.'
+              );
             }
           } catch (err) {
             if (err?.status === 401 || err?.status === 422) {
@@ -965,7 +977,9 @@
         if (paymentPollTimer) clearInterval(paymentPollTimer);
         paymentPollTimer = setInterval(async () => {
           try {
-            const refreshed = await apiFetch(`/api/orders/${encodeURIComponent(order.id)}`);
+            const refreshed = autoConfirmEnabled
+              ? await apiFetch('/api/payments/bakong/check', { method: 'POST', body: { order_id: order.id } })
+              : await apiFetch(`/api/orders/${encodeURIComponent(order.id)}`);
             if (refreshed?.order?.status === 'paid') {
               if (paymentPollTimer) clearInterval(paymentPollTimer);
               paymentPollTimer = null;

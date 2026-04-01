@@ -407,6 +407,14 @@ def get_order_details(order_id: int) -> dict[str, Any] | None:
     return {"order": order, "items": items, "user": user, "payment": payment}
 
 
+def get_latest_payment(order_id: int) -> dict[str, Any] | None:
+    state = read_state()
+    return next(
+        (deepcopy(row) for row in reversed(state["payments"]) if int(row.get("order_id", 0)) == int(order_id)),
+        None,
+    )
+
+
 def list_pending_orders(limit: int = 15) -> list[dict[str, Any]]:
     state = read_state()
     users_by_id = {int(user.get("id", 0)): deepcopy(user) for user in state["users"]}
@@ -514,34 +522,111 @@ def get_store_stats() -> dict[str, int]:
     }
 
 
-def confirm_order_payment(order_id: int, provider_ref: str | None = None) -> dict[str, Any] | None:
+def upsert_pending_payment(
+    order_id: int,
+    *,
+    provider: str,
+    amount_cents: int,
+    currency: str,
+    qr_payload: str,
+    qr_md5: str,
+    qr_short_hash: str,
+    auto_confirm_enabled: bool,
+) -> dict[str, Any] | None:
     def mutator(state: StoreState) -> dict[str, Any] | None:
         order = next((row for row in state["orders"] if int(row.get("id", 0)) == int(order_id)), None)
         if not order:
             return None
 
+        payment = next((row for row in reversed(state["payments"]) if int(row.get("order_id", 0)) == int(order_id)), None)
+        timestamp = utcnow_iso()
+
+        if payment and payment.get("status") == "succeeded":
+            return {"order": deepcopy(order), "payment": deepcopy(payment)}
+
+        if payment and payment.get("status") in {"pending", "processing", "created"}:
+            payment["provider"] = provider
+            payment["amount_cents"] = int(amount_cents)
+            payment["currency"] = currency
+            payment["provider_ref"] = qr_short_hash
+            payment["qr_payload"] = qr_payload
+            payment["qr_md5"] = qr_md5
+            payment["qr_short_hash"] = qr_short_hash
+            payment["auto_confirm_enabled"] = bool(auto_confirm_enabled)
+            payment["updated_at"] = timestamp
+        else:
+            payment = {
+                "id": next_id(state, "payments"),
+                "order_id": int(order_id),
+                "provider": provider,
+                "status": "pending",
+                "amount_cents": int(amount_cents),
+                "currency": currency,
+                "provider_ref": qr_short_hash,
+                "qr_payload": qr_payload,
+                "qr_md5": qr_md5,
+                "qr_short_hash": qr_short_hash,
+                "auto_confirm_enabled": bool(auto_confirm_enabled),
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            state["payments"].append(payment)
+
+        return {"order": deepcopy(order), "payment": deepcopy(payment)}
+
+    return update_state(mutator)
+
+
+def confirm_order_payment(
+    order_id: int,
+    provider_ref: str | None = None,
+    *,
+    provider: str | None = None,
+    payment_details: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    def mutator(state: StoreState) -> dict[str, Any] | None:
+        order = next((row for row in state["orders"] if int(row.get("id", 0)) == int(order_id)), None)
+        if not order:
+            return None
+
+        latest_payment = next(
+            (row for row in reversed(state["payments"]) if int(row.get("order_id", 0)) == int(order_id)),
+            None,
+        )
         if order.get("status") == "paid":
-            payment = next(
-                (deepcopy(row) for row in reversed(state["payments"]) if int(row.get("order_id", 0)) == int(order_id)),
-                None,
-            )
-            return {"order": deepcopy(order), "payment": payment}
+            return {"order": deepcopy(order), "payment": deepcopy(latest_payment) if latest_payment else None}
 
         timestamp = utcnow_iso()
         order["status"] = "paid"
         order["paid_at"] = timestamp
 
-        payment = {
-            "id": next_id(state, "payments"),
-            "order_id": int(order_id),
-            "provider": "bakong_khqr",
-            "status": "succeeded",
-            "amount_cents": int(order.get("total_cents", 0)),
-            "currency": order.get("currency") or "USD",
-            "provider_ref": (provider_ref or "").strip() or f"bakong-{order_id}",
-            "created_at": timestamp,
-        }
-        state["payments"].append(payment)
+        if latest_payment and latest_payment.get("status") in {"pending", "processing", "created"}:
+            payment = latest_payment
+            payment["provider"] = (provider or "").strip() or payment.get("provider") or "bakong_khqr"
+            payment["status"] = "succeeded"
+            payment["amount_cents"] = int(order.get("total_cents", 0))
+            payment["currency"] = order.get("currency") or "USD"
+            payment["provider_ref"] = (provider_ref or "").strip() or payment.get("provider_ref") or f"bakong-{order_id}"
+            payment["updated_at"] = timestamp
+        else:
+            payment = {
+                "id": next_id(state, "payments"),
+                "order_id": int(order_id),
+                "provider": (provider or "").strip() or "bakong_khqr",
+                "status": "succeeded",
+                "amount_cents": int(order.get("total_cents", 0)),
+                "currency": order.get("currency") or "USD",
+                "provider_ref": (provider_ref or "").strip() or f"bakong-{order_id}",
+                "created_at": timestamp,
+                "updated_at": timestamp,
+            }
+            state["payments"].append(payment)
+
+        if payment_details:
+            for key, value in payment_details.items():
+                payment[key] = value
+        payment["updated_at"] = timestamp
+        payment.setdefault("created_at", timestamp)
         return {"order": deepcopy(order), "payment": deepcopy(payment)}
 
     return update_state(mutator)

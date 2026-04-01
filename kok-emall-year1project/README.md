@@ -48,6 +48,7 @@ To generate a real Bakong merchant KHQR with the **correct amount**, set `BAKONG
 
 - `BAKONG_KHQR_BASE` should be your merchant QR payload string (usually starts with `000201...`).
 - The backend injects the amount and recalculates the CRC automatically.
+- If you also set `BAKONG_API_TOKEN`, the app can auto-confirm paid orders by calling Bakong's `check_transaction_by_md5` API with the exact QR string MD5.
 
 ### Set from a QR image (offline)
 
@@ -66,6 +67,16 @@ python scripts/set_bakong_khqr_base_from_image.py path\\to\\bakong_qr.png
 Then restart the backend.
 
 ## Confirm payment (merchant/admin)
+
+### Auto-confirm after scan/payment
+
+If you want the order to switch to `paid` automatically after the customer scans and pays, set:
+
+- `BAKONG_API_TOKEN`
+
+Then the payment page will poll Bakong's transaction-status API and auto-confirm the order when the transaction is found and the amount/currency match the order total.
+
+If `BAKONG_API_TOKEN` is missing, the app falls back to manual confirmation below.
 
 After you receive money in Bakong, confirm the order as paid so the user can see the invoice:
 
