@@ -113,9 +113,11 @@ Commands:
 
 ## Render deploy (public backend + frontend)
 
-This repo now includes `render.yaml` at the Git repo root so you can deploy the whole Flask app to Render. Because this app stores data in `backend/instance/store.json`, the Render service should use a persistent disk so users, orders, and invoices survive restarts.
+This repo now includes `render.yaml` at the Git repo root so you can deploy the whole Flask app to Render.
 
 The Render setup runs the Telegram admin bot inside the same web service process (`RUN_TELEGRAM_BOT_IN_WEB=1`) so both the bot and the web app share the same JSON store.
+
+Demo note: the current `render.yaml` uses Render's `free` plan and does not attach a persistent disk. That means users, orders, invoices, and auth history may reset after a redeploy/restart/sleep cycle.
 
 After you push the repo, open this Blueprint link and connect your GitHub repo in Render:
 

@@ -2,7 +2,7 @@ services:
   - type: web
     name: kok-emall-app
     runtime: python
-    plan: starter
+    plan: free
     region: oregon
     branch: main
     autoDeploy: true
@@ -31,7 +31,3 @@ services:
         sync: false
       - key: TELEGRAM_ADMIN_IDS
         sync: false
-    disk:
-      name: app-data
-      mountPath: /opt/render/project/src/kok-emall-year1project/backend/instance
-      sizeGB: 5
