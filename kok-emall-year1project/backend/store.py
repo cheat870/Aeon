@@ -276,11 +276,11 @@ def confirm_order_payment(order_id: int, provider_ref: str | None = None) -> dic
         payment = {
             "id": next_id(state, "payments"),
             "order_id": int(order_id),
-            "provider": "aba_khqr",
+            "provider": "bakong_khqr",
             "status": "succeeded",
             "amount_cents": int(order.get("total_cents", 0)),
             "currency": order.get("currency") or "USD",
-            "provider_ref": (provider_ref or "").strip() or f"aba-{order_id}",
+            "provider_ref": (provider_ref or "").strip() or f"bakong-{order_id}",
             "created_at": timestamp,
         }
         state["payments"].append(payment)

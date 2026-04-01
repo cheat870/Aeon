@@ -585,7 +585,7 @@
 
       let qrPayload = null;
       try {
-        const qrData = await apiFetch('/api/payments/aba/qr', { method: 'POST', body: { order_id: order.id } });
+        const qrData = await apiFetch('/api/payments/bakong/qr', { method: 'POST', body: { order_id: order.id } });
         qrPayload = qrData?.qr_payload || null;
       } catch (err) {
         qrPayload = null;
@@ -608,7 +608,7 @@
           <div class="payment-qr">
             <h3>Scan QR to pay</h3>
             <canvas id="payment-qr-canvas"></canvas>
-            <p id="payment-qr-fallback" style="display:none;color:gray;">ABA QR not configured. Set ABA_KHQR_BASE in .env.</p>
+            <p id="payment-qr-fallback" style="display:none;color:gray;">Bakong QR not configured. Set BAKONG_KHQR_BASE in .env.</p>
             <p style="margin-top:8px;color:gray;">Amount: <strong>${formatMoney(order.total_cents, currency)}</strong></p>
           </div>
 
@@ -785,7 +785,7 @@
             </div>
             <div style="text-align:right;">
               <strong>Payment</strong>
-              <div>ABA KHQR</div>
+              <div>Bakong KHQR</div>
             </div>
           </div>
 

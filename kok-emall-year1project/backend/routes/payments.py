@@ -54,9 +54,14 @@ def admin_confirm():
     )
 
 
+def _khqr_base() -> str:
+    return os.environ.get("BAKONG_KHQR_BASE", "").strip() or os.environ.get("ABA_KHQR_BASE", "").strip()
+
+
+@payments_bp.post("/bakong/qr")
 @payments_bp.post("/aba/qr")
 @jwt_required()
-def aba_qr():
+def bakong_qr():
     user_id = int(get_jwt_identity())
     try:
         payload = get_json()
@@ -80,12 +85,12 @@ def aba_qr():
     if not order:
         return api_error("Order not found.", 404)
 
-    base = os.environ.get("ABA_KHQR_BASE", "").strip()
+    base = _khqr_base()
     if not base:
-        return api_error("ABA merchant KHQR is not configured. Set ABA_KHQR_BASE in .env.", 501)
+        return api_error("Bakong KHQR is not configured. Set BAKONG_KHQR_BASE in .env.", 501)
     if not base.startswith("000201"):
         return api_error(
-            "ABA_KHQR_BASE must be a full EMV/KHQR payload string (it usually starts with 000201...). "
+            "BAKONG_KHQR_BASE must be a full EMV/KHQR payload string (it usually starts with 000201...). "
             "Do not set it to an account number. See README for how to set it from a QR image.",
             501,
         )
@@ -100,6 +105,6 @@ def aba_qr():
     try:
         qr_payload = with_amount(base, amount=amount_str, point_of_initiation_method="12")
     except EmvQrError as e:
-        return api_error(f"Invalid ABA_KHQR_BASE: {e}", 500)
+        return api_error(f"Invalid BAKONG_KHQR_BASE: {e}", 500)
 
     return jsonify({"qr_payload": qr_payload, "amount": amount_str, "currency": currency})

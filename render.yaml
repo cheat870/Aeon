@@ -25,7 +25,7 @@ services:
         generateValue: true
       - key: PAYMENT_CONFIRM_SECRET
         generateValue: true
-      - key: ABA_KHQR_BASE
+      - key: BAKONG_KHQR_BASE
         sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false

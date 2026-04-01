@@ -5,7 +5,7 @@ This project is a static HTML/CSS/JS frontend with a Flask backend API for:
 - Login/Register/Logout (JWT)
 - Cart (login required)
 - Checkout (create order)
-- Payment via ABA merchant KHQR (QR payload generation)
+- Payment via Bakong merchant KHQR (QR payload generation)
 - Invoice (shown after payment confirmed)
 
 ## Quick start
@@ -38,15 +38,15 @@ Then open:
 ## Notes
 
 - You must **login/register** before you can view the cart, add items, checkout, or pay.
-- The payment page shows an ABA KHQR QR code with the **order total**.
-- The app does **not** automatically detect ABA incoming money. A merchant/admin must confirm the payment (manual/webhook) before the invoice is available.
+- The payment page shows a Bakong KHQR QR code with the **order total**.
+- The app does **not** automatically detect Bakong incoming money. A merchant/admin must confirm the payment (manual/webhook) before the invoice is available.
 - Login tokens expire after `JWT_ACCESS_TOKEN_EXPIRES_DAYS` (default: 7 days).
 
-## ABA merchant QR (KHQR)
+## Bakong merchant QR (KHQR)
 
-To generate a real ABA merchant KHQR with the **correct amount**, set `ABA_KHQR_BASE` in `.env` (copy from `.env.example`).
+To generate a real Bakong merchant KHQR with the **correct amount**, set `BAKONG_KHQR_BASE` in `.env` (copy from `.env.example`).
 
-- `ABA_KHQR_BASE` should be your merchant QR payload string (usually starts with `000201...`).
+- `BAKONG_KHQR_BASE` should be your merchant QR payload string (usually starts with `000201...`).
 - The backend injects the amount and recalculates the CRC automatically.
 
 ### Set from a QR image (offline)
@@ -57,17 +57,17 @@ To generate a real ABA merchant KHQR with the **correct amount**, set `ABA_KHQR_
 python -m pip install opencv-python
 ```
 
-2) Save your ABA QR image (PNG/JPG) on your computer and run:
+2) Save your Bakong QR image (PNG/JPG) on your computer and run:
 
 ```bash
-python scripts/set_aba_khqr_base_from_image.py path\\to\\aba_qr.png
+python scripts/set_bakong_khqr_base_from_image.py path\\to\\bakong_qr.png
 ```
 
 Then restart the backend.
 
 ## Confirm payment (merchant/admin)
 
-After you receive money in ABA, confirm the order as paid so the user can see the invoice:
+After you receive money in Bakong, confirm the order as paid so the user can see the invoice:
 
 Option A (recommended): Admin API (requires `.env` secret)
 
@@ -82,7 +82,7 @@ python scripts/mark_order_paid.py <order_id> [provider_ref]
 
 ## Telegram admin bot (orders + users + auth history)
 
-The bot can list recent users, show one user summary, show auth/login history, list orders, show invoices, and confirm payments (after you verify money arrived in ABA).
+The bot can list recent users, show one user summary, show auth/login history, list orders, show invoices, and confirm payments (after you verify money arrived in Bakong).
 
 1) Copy `.env.example` to `.env` and set:
 
@@ -127,7 +127,7 @@ https://dashboard.render.com/blueprint/new?repo=https://github.com/cheat870/Aeon
 
 Fill these secrets in the Render Dashboard when prompted:
 
-- `ABA_KHQR_BASE`
+- `BAKONG_KHQR_BASE`
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_ADMIN_IDS`
 
