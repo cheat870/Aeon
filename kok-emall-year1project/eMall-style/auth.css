@@ -54,6 +54,28 @@
   text-decoration:underline;
 }
 
+.auth-status{
+  margin:4px 0 0;
+  color:#5d5d5d;
+  line-height:1.5;
+}
+
+.auth-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.auth-secondary-btn{
+  background:#fff;
+  color:rgb(24, 145, 145);
+  border:1px solid rgb(24, 145, 145);
+}
+
+.auth-secondary-btn:hover{
+  background:rgba(24, 145, 145, 0.08);
+}
+
 .payment-grid{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -170,6 +192,9 @@
   }
   .invoice-actions{
     justify-content:stretch;
+    flex-direction:column;
+  }
+  .auth-actions{
     flex-direction:column;
   }
 }

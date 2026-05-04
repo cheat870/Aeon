@@ -34,6 +34,7 @@ Then open:
 - The backend stores users, carts, orders, and payments in `backend/instance/store.json`.
 - No SQL/MySQL/SQLite server is required for app data anymore.
 - If `TELEGRAM_BOT_TOKEN` and `TELEGRAM_ADMIN_IDS` are configured, register/login/logout events are sent to Telegram automatically.
+- New registrations can require an 8-digit email verification code before the account is created.
 
 ## Notes
 
@@ -41,6 +42,29 @@ Then open:
 - The payment page shows a Bakong KHQR QR code with the **order total**.
 - The app does **not** automatically detect Bakong incoming money. A merchant/admin must confirm the payment (manual/webhook) before the invoice is available.
 - Login tokens expire after `JWT_ACCESS_TOKEN_EXPIRES_DAYS` (default: 7 days).
+
+## Register email verification
+
+To send an 8-digit verification code during register, set these values in `.env`:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_USERNAME`
+- `SMTP_PASSWORD`
+- `SMTP_FROM_EMAIL`
+- `SMTP_FROM_NAME`
+
+Optional flags:
+
+- `SMTP_USE_TLS=1`
+- `SMTP_USE_SSL=0`
+
+Flow:
+
+1. User enters name/email/password.
+2. App emails an 8-digit code valid for 10 minutes.
+3. User enters the code.
+4. Account is created only after the code is correct.
 
 ## Bakong merchant QR (KHQR)
 

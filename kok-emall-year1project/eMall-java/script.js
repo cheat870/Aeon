@@ -797,18 +797,75 @@
     }
 
     if (registerForm) {
+      const registerCodeGroup = document.getElementById('register-code-group');
+      const registerCodeInput = document.getElementById('register-code');
+      const registerStatus = document.getElementById('register-status');
+      const registerSubmit = document.getElementById('register-submit');
+      const registerResend = document.getElementById('register-resend');
+      let verificationPending = false;
+
+      const setRegisterVerificationState = ({ pending, message } = {}) => {
+        verificationPending = Boolean(pending);
+        if (registerCodeGroup) registerCodeGroup.hidden = !verificationPending;
+        if (registerResend) registerResend.hidden = !verificationPending;
+        if (registerSubmit) registerSubmit.textContent = verificationPending ? 'Verify & Register' : 'Send verification code';
+        if (!verificationPending && registerCodeInput) registerCodeInput.value = '';
+        if (registerStatus && message) registerStatus.textContent = message;
+      };
+
+      const getRegisterPayload = () => ({
+        name: document.getElementById('register-name')?.value || '',
+        email: document.getElementById('register-email')?.value || '',
+        password: document.getElementById('register-password')?.value || '',
+      });
+
+      const requestRegisterCode = async () => {
+        const payload = getRegisterPayload();
+        const data = await apiFetch('/api/auth/register', { method: 'POST', body: payload });
+        setRegisterVerificationState({
+          pending: true,
+          message:
+            data?.message ||
+            `We sent an 8-digit verification code to ${data?.masked_email || payload.email}.`,
+        });
+        toast(data?.message || 'Verification code sent');
+        registerCodeInput?.focus();
+      };
+
+      registerResend?.addEventListener('click', async () => {
+        try {
+          await requestRegisterCode();
+        } catch (err) {
+          toast(err?.message || 'Failed to resend code');
+        }
+      });
+
       registerForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const name = document.getElementById('register-name')?.value || '';
-        const email = document.getElementById('register-email')?.value || '';
-        const password = document.getElementById('register-password')?.value || '';
         try {
-          const data = await apiFetch('/api/auth/register', { method: 'POST', body: { name, email, password } });
+          if (!verificationPending) {
+            await requestRegisterCode();
+            return;
+          }
+
+          const payload = getRegisterPayload();
+          payload.verification_code = registerCodeInput?.value || '';
+          const data = await apiFetch('/api/auth/register', { method: 'POST', body: payload });
           setAccessToken(data.access_token);
           setStoredUser(data.user);
+          setRegisterVerificationState({
+            pending: false,
+            message: 'Email verified successfully. Redirecting...',
+          });
           const next = new URLSearchParams(window.location.search).get('next') || 'index.html';
           window.location.href = next;
         } catch (err) {
+          if (err?.data?.error?.code === 'VERIFICATION_REQUIRED') {
+            setRegisterVerificationState({
+              pending: true,
+              message: err?.message || 'Please request a new verification code.',
+            });
+          }
           toast(err?.message || 'Register failed');
         }
       });

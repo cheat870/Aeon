@@ -137,6 +137,7 @@ _DEFAULT_STATE: StoreState = {
     "order_items": [],
     "payments": [],
     "auth_events": [],
+    "register_verifications": [],
     "products": [],
 }
 
@@ -166,7 +167,7 @@ def _ensure_shape(state: StoreState) -> StoreState:
     for key in _DEFAULT_STATE["meta"]["next_ids"]:
         state["meta"]["next_ids"].setdefault(key, 1)
 
-    for key in ("users", "cart_items", "orders", "order_items", "payments", "auth_events"):
+    for key in ("users", "cart_items", "orders", "order_items", "payments", "auth_events", "register_verifications"):
         if not isinstance(state.get(key), list):
             state[key] = []
     if not isinstance(state.get("products"), list) or not state.get("products"):

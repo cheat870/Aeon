@@ -47,7 +47,26 @@
           <label>Password</label>
           <input id="register-password" type="password" placeholder="At least 6 characters" required />
 
-          <button class="normal" type="submit">Register</button>
+          <div id="register-code-group" class="auth-code-group" hidden>
+            <label>Verification code</label>
+            <input
+              id="register-code"
+              type="text"
+              inputmode="numeric"
+              maxlength="8"
+              placeholder="Enter 8-digit code"
+              autocomplete="one-time-code"
+            />
+          </div>
+
+          <p id="register-status" class="auth-status" aria-live="polite">
+            We will send an 8-digit verification code to your email before your account is created.
+          </p>
+
+          <div class="auth-actions">
+            <button id="register-submit" class="normal" type="submit">Send verification code</button>
+            <button id="register-resend" class="normal auth-secondary-btn" type="button" hidden>Resend code</button>
+          </div>
         </form>
         <p class="auth-help">
           Already have an account?
