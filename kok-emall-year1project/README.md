@@ -45,19 +45,45 @@ Then open:
 
 ## Register email verification
 
-To send an 8-digit verification code during register, set these values in `.env`:
+The app supports two email providers for the 8-digit register code:
 
+- `EMAIL_PROVIDER=resend` (recommended on Render Free)
+- `EMAIL_PROVIDER=smtp` (good for local/dev servers)
+
+### Resend (recommended on Render Free)
+
+Set these values in `.env`:
+
+- `EMAIL_PROVIDER=resend`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `RESEND_FROM_NAME`
+- `RESEND_REPLY_TO` (optional)
+
+Notes:
+
+- Resend sends over HTTPS, so it works on Render Free.
+- For testing, `onboarding@resend.dev` can only send to the email address of your own Resend account.
+- For real users, verify your domain in Resend and use a sender like `noreply@yourdomain.com`.
+
+### SMTP fallback
+
+Set these values in `.env`:
+
+- `EMAIL_PROVIDER=smtp`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USERNAME`
 - `SMTP_PASSWORD`
 - `SMTP_FROM_EMAIL`
 - `SMTP_FROM_NAME`
-
-Optional flags:
-
 - `SMTP_USE_TLS=1`
 - `SMTP_USE_SSL=0`
+
+Important:
+
+- Render Free blocks outbound SMTP ports `25`, `465`, and `587`, so SMTP will fail there.
+- SMTP still works locally or on a paid Render instance.
 
 Flow:
 

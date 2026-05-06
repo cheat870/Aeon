@@ -27,6 +27,16 @@ services:
         generateValue: true
       - key: BAKONG_KHQR_BASE
         sync: false
+      - key: EMAIL_PROVIDER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: RESEND_FROM_NAME
+        value: KOK-eMall
+      - key: RESEND_REPLY_TO
+        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_ADMIN_IDS
