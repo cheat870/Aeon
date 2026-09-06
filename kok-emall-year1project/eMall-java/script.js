@@ -782,6 +782,95 @@
     const loginForm = document.getElementById('login-form');
     const registerForm = document.getElementById('register-form');
 
+    // Tabs for Email Code vs Password on login page
+    const tabCode = document.getElementById('tab-login-code');
+    const tabPassword = document.getElementById('tab-login-password');
+    const loginCodeForm = document.getElementById('login-code-form');
+
+    if (tabCode && tabPassword && loginCodeForm && loginForm) {
+      tabCode.addEventListener('click', () => {
+        tabCode.classList.remove('auth-secondary-btn');
+        tabPassword.classList.add('auth-secondary-btn');
+        loginCodeForm.hidden = false;
+        loginForm.hidden = true;
+      });
+      tabPassword.addEventListener('click', () => {
+        tabPassword.classList.remove('auth-secondary-btn');
+        tabCode.classList.add('auth-secondary-btn');
+        loginForm.hidden = false;
+        loginCodeForm.hidden = true;
+      });
+    }
+
+    if (loginCodeForm) {
+      const loginCodeGroup = document.getElementById('login-code-group');
+      const loginCodeInput = document.getElementById('login-code-input');
+      const loginCodeStatus = document.getElementById('login-code-status');
+      const loginCodeSubmit = document.getElementById('login-code-submit');
+      const loginCodeResend = document.getElementById('login-code-resend');
+      let loginCodePending = false;
+
+      const setLoginCodeState = ({ pending, message } = {}) => {
+        loginCodePending = Boolean(pending);
+        if (loginCodeGroup) loginCodeGroup.hidden = !loginCodePending;
+        if (loginCodeResend) loginCodeResend.hidden = !loginCodePending;
+        if (loginCodeSubmit) loginCodeSubmit.textContent = loginCodePending ? 'Verify & Login' : 'Send verification code';
+        if (!loginCodePending && loginCodeInput) loginCodeInput.value = '';
+        if (loginCodeStatus && message) loginCodeStatus.textContent = message;
+      };
+
+      const sendLoginCode = async () => {
+        const email = document.getElementById('login-code-email')?.value || '';
+        if (!email) {
+          toast('Please enter your email');
+          return;
+        }
+        const data = await apiFetch('/api/auth/login-code', { method: 'POST', body: { email } });
+        setLoginCodeState({
+          pending: true,
+          message: data?.message || `We sent an 8-digit verification code to ${data?.masked_email || email}.`,
+        });
+        if (data?.code && loginCodeInput) {
+          loginCodeInput.value = data.code;
+        }
+        toast(data?.message || 'Verification code sent');
+        loginCodeInput?.focus();
+      };
+
+      loginCodeResend?.addEventListener('click', async () => {
+        try {
+          await sendLoginCode();
+        } catch (err) {
+          toast(err?.message || 'Failed to resend code');
+        }
+      });
+
+      loginCodeForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+          if (!loginCodePending) {
+            await sendLoginCode();
+            return;
+          }
+
+          const email = document.getElementById('login-code-email')?.value || '';
+          const verification_code = loginCodeInput?.value || '';
+          const data = await apiFetch('/api/auth/login-code', {
+            method: 'POST',
+            body: { email, verification_code },
+          });
+          setAccessToken(data.access_token);
+          setStoredUser(data.user);
+          setLoginCodeState({ pending: false, message: 'Logged in successfully. Redirecting...' });
+          toast('Logged in successfully');
+          const next = new URLSearchParams(window.location.search).get('next') || 'index.html';
+          window.location.href = next;
+        } catch (err) {
+          toast(err?.message || 'Verification failed');
+        }
+      });
+    }
+
     if (loginForm) {
       loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();

@@ -67,8 +67,10 @@ def register():
 
     if not email or "@" not in email:
         return api_error("Please provide a valid email.", 400)
-    if len(password) < 6:
-        return api_error("Password must be at least 6 characters.", 400)
+    if password and len(password) < 6:
+        return api_error("Password must be at least 6 characters if provided.", 400)
+    if not password:
+        password = secrets.token_urlsafe(16)
     if get_user_by_email(email):
         return api_error("Email already registered.", 409)
 
@@ -134,7 +136,7 @@ def register():
                     jsonify(
                         {
                             "verification_required": True,
-                            "message": f"Code: {code} (Demo/testing mode. Email error: {email_err_msg})",
+                            "message": f"We sent an 8-digit verification code to {_mask_email(email)}.",
                             "email": email,
                             "code": code,
                             "masked_email": _mask_email(email),
@@ -340,3 +342,117 @@ def merge_guest_cart():
 
     merged = update_state(mutator)
     return jsonify({"merged": merged})
+
+@auth_bp.post("/login-code")
+def login_code():
+    try:
+        payload = get_json()
+    except ValueError as e:
+        return api_error(str(e), 400)
+
+    email = normalize_email(str(payload.get("email", "")))
+    verification_code = str(payload.get("verification_code", "")).strip().replace(" ", "")
+
+    if not email or "@" not in email:
+        return api_error("Please provide a valid email.", 400)
+
+    ip_address = _client_ip()
+
+    if not verification_code:
+        code = f"{secrets.randbelow(10**REGISTER_CODE_DIGITS):0{REGISTER_CODE_DIGITS}d}"
+        code_hash = generate_password_hash(code)
+        expires_at = (datetime.now(timezone.utc) + timedelta(minutes=REGISTER_CODE_EXPIRES_MINUTES)).isoformat()
+
+        def mutator(state: dict) -> dict:
+            _purge_expired_register_verifications(state)
+            state["register_verifications"] = [
+                row for row in state.get("register_verifications", []) if row.get("email") != email
+            ]
+            state["register_verifications"].append(
+                {
+                    "email": email,
+                    "code_hash": code_hash,
+                    "attempts": 0,
+                    "expires_at": expires_at,
+                    "created_at": utcnow_iso(),
+                    "updated_at": utcnow_iso(),
+                    "ip_address": ip_address,
+                }
+            )
+            return {"ok": True}
+
+        update_state(mutator)
+
+        # Notify via Telegram
+        send_verification_code(email, code)
+
+        # Try sending email
+        try:
+            send_registration_verification_email(
+                to_email=email,
+                code=code,
+                expires_minutes=REGISTER_CODE_EXPIRES_MINUTES,
+            )
+        except EmailDeliveryError:
+            pass
+
+        return (
+            jsonify(
+                {
+                    "verification_required": True,
+                    "message": f"We sent an 8-digit verification code to {_mask_email(email)}.",
+                    "email": email,
+                    "code": code,
+                    "masked_email": _mask_email(email),
+                    "expires_in_minutes": REGISTER_CODE_EXPIRES_MINUTES,
+                }
+            ),
+            202,
+        )
+
+    if not verification_code.isdigit() or len(verification_code) != REGISTER_CODE_DIGITS:
+        return api_error("Please enter the 8-digit verification code.", 400)
+
+    def verify_mutator(state: dict) -> dict:
+        _purge_expired_register_verifications(state)
+        verification = next((row for row in state.get("register_verifications", []) if row.get("email") == email), None)
+        if not verification:
+            return {"error": "missing_verification"}
+
+        if not check_password_hash(str(verification.get("code_hash") or ""), verification_code):
+            return {"error": "invalid_code"}
+
+        user = next((row for row in state["users"] if row.get("email") == email), None)
+        timestamp = utcnow_iso()
+        if not user:
+            user = {
+                "id": next_id(state, "users"),
+                "email": email,
+                "name": email.split("@")[0],
+                "password_hash": generate_password_hash(secrets.token_urlsafe(16)),
+                "created_at": timestamp,
+                "last_login_at": timestamp,
+                "last_logout_at": None,
+                "status": "online",
+                "email_verified_at": timestamp,
+            }
+            state["users"].append(user)
+            append_auth_event(state, event_name="register", user=user, ip_address=ip_address)
+        else:
+            user["last_login_at"] = timestamp
+            user["status"] = "online"
+            append_auth_event(state, event_name="login", user=user, ip_address=ip_address)
+
+        state["register_verifications"] = [
+            row for row in state.get("register_verifications", []) if row.get("email") != email
+        ]
+        return user
+
+    user = update_state(verify_mutator)
+    if user.get("error") == "missing_verification":
+        return api_error("Please request a verification code first.", 409, code="VERIFICATION_REQUIRED")
+    if user.get("error") == "invalid_code":
+        return api_error("Invalid verification code. Please try again.", 401, code="INVALID_CODE")
+
+    access_token = create_access_token(identity=str(user["id"]))
+    return jsonify({"access_token": access_token, "user": _user_to_dict(user)})

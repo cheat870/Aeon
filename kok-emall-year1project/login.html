@@ -37,22 +37,57 @@
     <section class="section-p1">
       <div class="auth-card">
         <h2>Login</h2>
-        <form id="login-form" class="auth-form">
+
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button type="button" id="tab-login-code" class="normal" style="flex: 1; padding: 10px; font-size: 14px;">Email Code</button>
+          <button type="button" id="tab-login-password" class="normal auth-secondary-btn" style="flex: 1; padding: 10px; font-size: 14px;">Password</button>
+        </div>
+
+        <!-- Form 1: Email Code Login / Auto-Register -->
+        <form id="login-code-form" class="auth-form">
+          <label>Email</label>
+          <input id="login-code-email" type="email" placeholder="you@example.com" required />
+
+          <div id="login-code-group" class="auth-code-group" hidden>
+            <label>Verification code</label>
+            <input
+              id="login-code-input"
+              type="text"
+              inputmode="numeric"
+              maxlength="8"
+              placeholder="Enter 8-digit code"
+              autocomplete="one-time-code"
+            />
+          </div>
+
+          <p id="login-code-status" class="auth-status" aria-live="polite">
+            We will send an 8-digit verification code to your email.
+          </p>
+
+          <div class="auth-actions">
+            <button id="login-code-submit" class="normal" type="submit">Send verification code</button>
+            <button id="login-code-resend" class="normal auth-secondary-btn" type="button" hidden>Resend code</button>
+          </div>
+        </form>
+
+        <!-- Form 2: Password Login -->
+        <form id="login-form" class="auth-form" hidden>
           <label>Email</label>
           <input id="login-email" type="email" placeholder="you@example.com" required />
 
           <label>Password</label>
           <input id="login-password" type="password" placeholder="••••••••" required />
 
-          <button class="normal" type="submit">Login</button>
+          <button class="normal" type="submit">Login with password</button>
         </form>
+
         <p class="auth-help">
           Don't have an account?
-          <a href="register.html">Create one</a>
+          <a href="register.html">Create one with email</a>
         </p>
       </div>
     </section>
 
-    <script src="eMall-java/script.js?v=20260907"></script>
+    <script src="eMall-java/script.js?v=20260907_v3"></script>
   </body>
 </html>
