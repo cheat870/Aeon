@@ -127,7 +127,8 @@
       headers['Content-Type'] = 'application/json';
     }
 
-    const base = window.EMALL_API_BASE || (window.location.hostname.endsWith('github.io') ? 'https://kok-emall-app.onrender.com' : '');
+    const needsRemoteApi = window.location.hostname.endsWith('github.io') || window.location.hostname.endsWith('vercel.app');
+    const base = window.EMALL_API_BASE || (needsRemoteApi ? 'https://kok-emall-app.onrender.com' : '');
     const url = (path.startsWith('http') || !base) ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`;
 
     const res = await fetch(url, {
