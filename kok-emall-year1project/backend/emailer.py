@@ -25,6 +25,8 @@ def _email_provider() -> str:
     configured = str(os.environ.get("EMAIL_PROVIDER", "")).strip().lower()
     if configured:
         return configured
+    if str(os.environ.get("BREVO_API_KEY", "")).strip():
+        return "brevo"
     if str(os.environ.get("RESEND_API_KEY", "")).strip():
         return "resend"
     return "smtp"
@@ -81,8 +83,12 @@ def _send_via_resend(
     ).strip() or "KOK-eMall"
     reply_to = str(os.environ.get("RESEND_REPLY_TO", "")).strip() or None
 
-    if not api_key or not from_email:
-        raise EmailDeliveryError("Resend email is not configured yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL first.")
+    # Resend requires onboarding@resend.dev unless sending from a verified custom domain
+    if not from_email or "@gmail.com" in from_email.lower() or "@yahoo.com" in from_email.lower():
+        from_email = "onboarding@resend.dev"
+
+    if not api_key:
+        raise EmailDeliveryError("Resend API key is not configured. Set RESEND_API_KEY first.")
 
     payload: dict[str, object] = {
         "from": formataddr((from_name, from_email)),
@@ -116,11 +122,59 @@ def _send_via_resend(
         message = str(parsed.get("message") or parsed.get("error") or "").strip()
         if exc.code == 403:
             raise EmailDeliveryError(
-                "Resend rejected the sender. Verify your sending domain or use your Resend account email for testing."
+                "Resend Free restriction: You can only send to your own Resend account email (or verify a custom domain in Resend)."
             ) from exc
         raise EmailDeliveryError(message or "Failed to send verification email through Resend.") from exc
     except Exception as exc:
         raise EmailDeliveryError("Failed to send verification email through Resend.") from exc
+
+
+def _send_via_brevo(
+    *,
+    to_email: str,
+    subject: str,
+    text: str,
+    html: str,
+) -> None:
+    api_key = str(os.environ.get("BREVO_API_KEY", "")).strip()
+    sender_email = str(
+        os.environ.get("BREVO_SENDER_EMAIL", "") or os.environ.get("RESEND_FROM_EMAIL", "")
+    ).strip()
+    sender_name = str(os.environ.get("BREVO_SENDER_NAME", "KOK-eMall")).strip() or "KOK-eMall"
+
+    if not api_key or not sender_email:
+        raise EmailDeliveryError("Brevo email is not configured. Set BREVO_API_KEY and BREVO_SENDER_EMAIL.")
+
+    payload = {
+        "sender": {"name": sender_name, "email": sender_email},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "htmlContent": html,
+        "textContent": text,
+    }
+    req = urllib_request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "api-key": api_key,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=20) as response:
+            response.read()
+    except urllib_error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(body)
+        except Exception:
+            parsed = {}
+        message = str(parsed.get("message") or "").strip()
+        raise EmailDeliveryError(message or "Failed to send verification email through Brevo.") from exc
+    except Exception as exc:
+        raise EmailDeliveryError("Failed to send verification email through Brevo.") from exc
 
 
 def _send_via_smtp(
@@ -183,7 +237,10 @@ def send_registration_verification_email(
     if provider == "resend":
         _send_via_resend(to_email=to_email, subject=subject, text=text, html=html)
         return
+    if provider == "brevo":
+        _send_via_brevo(to_email=to_email, subject=subject, text=text, html=html)
+        return
     if provider == "smtp":
         _send_via_smtp(to_email=to_email, subject=subject, text=text)
         return
-    raise EmailDeliveryError("Unsupported email provider. Use EMAIL_PROVIDER=resend or EMAIL_PROVIDER=smtp.")
+    raise EmailDeliveryError("Unsupported email provider. Use EMAIL_PROVIDER=resend, brevo, or smtp.")
