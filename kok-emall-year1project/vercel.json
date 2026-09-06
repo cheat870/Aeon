@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://kok-emall-app-s731.onrender.com/api/$1"
+    }
+  ]
+}

@@ -127,7 +127,10 @@
       headers['Content-Type'] = 'application/json';
     }
 
-    const res = await fetch(path, {
+    const base = window.EMALL_API_BASE || (window.location.hostname.endsWith('github.io') ? 'https://kok-emall-app-s731.onrender.com' : '');
+    const url = (path.startsWith('http') || !base) ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`;
+
+    const res = await fetch(url, {
       ...options,
       headers,
       body: hasBody && !(options.body instanceof FormData) ? JSON.stringify(options.body) : options.body,
