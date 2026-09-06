@@ -4,7 +4,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://kok-emall-app-s731.onrender.com/api/$1"
+      "destination": "https://kok-emall-app.onrender.com/api/$1"
     }
   ]
 }

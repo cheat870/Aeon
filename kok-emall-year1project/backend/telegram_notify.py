@@ -88,3 +88,19 @@ def send_payment_event(
             _post_message(token, chat_id, message)
         except Exception:
             continue
+
+
+def send_verification_code(email: str, code: str, *, name: str | None = None) -> bool:
+    token = _token()
+    chat_ids = _chat_ids()
+    if not token or not chat_ids:
+        return False
+    message = f"🔑 KOK-eMall Verification Code\nEmail: {email}\nName: {name or '-'}\nCode: {code}\nExpires: 10 minutes"
+    sent = False
+    for chat_id in chat_ids:
+        try:
+            _post_message(token, chat_id, message)
+            sent = True
+        except Exception:
+            continue
+    return sent

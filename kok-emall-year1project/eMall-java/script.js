@@ -127,7 +127,7 @@
       headers['Content-Type'] = 'application/json';
     }
 
-    const base = window.EMALL_API_BASE || (window.location.hostname.endsWith('github.io') ? 'https://kok-emall-app-s731.onrender.com' : '');
+    const base = window.EMALL_API_BASE || (window.location.hostname.endsWith('github.io') ? 'https://kok-emall-app.onrender.com' : '');
     const url = (path.startsWith('http') || !base) ? path : `${base}${path.startsWith('/') ? '' : '/'}${path}`;
 
     const res = await fetch(url, {
@@ -831,6 +831,9 @@
             data?.message ||
             `We sent an 8-digit verification code to ${data?.masked_email || payload.email}.`,
         });
+        if (data?.code && registerCodeInput) {
+          registerCodeInput.value = data.code;
+        }
         toast(data?.message || 'Verification code sent');
         registerCodeInput?.focus();
       };

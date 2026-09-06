@@ -9,7 +9,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend.emailer import EmailDeliveryError, send_registration_verification_email
 from backend.store import append_auth_event, get_user_by_email, get_user_by_id, next_id, update_state, utcnow_iso
-from backend.telegram_notify import send_auth_event
+from backend.telegram_notify import send_auth_event, send_verification_code
 from backend.utils import api_error, get_json, normalize_email
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -108,6 +108,11 @@ def register():
         if result.get("error") == "exists":
             return api_error("Email already registered.", 409)
 
+        # Always notify via Telegram if configured
+        send_verification_code(email, code, name=name)
+
+        email_sent = True
+        email_err_msg = ""
         try:
             send_registration_verification_email(
                 to_email=email,
@@ -116,13 +121,35 @@ def register():
                 recipient_name=name,
             )
         except EmailDeliveryError as exc:
+            email_sent = False
+            email_err_msg = str(exc)
+
+        # If email delivery failed:
+        if not email_sent:
+            # If demo mode is active or debug is on, allow code in response
+            demo_mode = os.environ.get("DEMO_MODE", "1") == "1" or os.environ.get("FLASK_DEBUG", "0") == "1"
+            if demo_mode:
+                return (
+                    jsonify(
+                        {
+                            "verification_required": True,
+                            "message": f"Code: {code} (Demo/testing mode. Email error: {email_err_msg})",
+                            "email": email,
+                            "code": code,
+                            "masked_email": _mask_email(email),
+                            "expires_in_minutes": REGISTER_CODE_EXPIRES_MINUTES,
+                        }
+                    ),
+                    202,
+                )
+
             def rollback(state: dict) -> None:
                 state["register_verifications"] = [
                     row for row in state.get("register_verifications", []) if row.get("email") != email
                 ]
 
             update_state(rollback)
-            return api_error(str(exc), 503, code="EMAIL_SEND_FAILED")
+            return api_error(email_err_msg, 503, code="EMAIL_SEND_FAILED")
 
         return (
             jsonify(
