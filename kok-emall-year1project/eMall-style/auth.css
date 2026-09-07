@@ -16,10 +16,57 @@
   color:rgb(24, 145, 145);
 }
 
+[hidden]{
+  display:none !important;
+}
+
+.auth-tabs{
+  display:flex;
+  gap:4px;
+  margin-bottom:18px;
+  padding:4px;
+  background:#f3f4f6;
+  border-radius:12px;
+}
+
+.auth-tabs button{
+  flex:1;
+  padding:10px 12px;
+  border:none;
+  background:transparent;
+  color:#555;
+  font-size:14px;
+  font-weight:600;
+  border-radius:9px;
+  cursor:pointer;
+}
+
+.auth-tabs button.is-active{
+  background:#fff;
+  color:rgb(24, 145, 145);
+  box-shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+
 .auth-form{
   display:flex;
   flex-direction:column;
   gap:10px;
+}
+
+.auth-code-group{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.auth-form button.normal{
+  background:rgb(24, 145, 145);
+  color:#fff;
+}
+
+.auth-form button.normal:hover{
+  background:rgb(18, 120, 120);
+  color:#fff;
 }
 
 .auth-form label{
@@ -66,14 +113,21 @@
   flex-wrap:wrap;
 }
 
-.auth-secondary-btn{
+.auth-actions .normal{
+  flex:1;
+}
+
+.auth-secondary-btn,
+.auth-form button.normal.auth-secondary-btn{
   background:#fff;
   color:rgb(24, 145, 145);
   border:1px solid rgb(24, 145, 145);
 }
 
-.auth-secondary-btn:hover{
+.auth-secondary-btn:hover,
+.auth-form button.normal.auth-secondary-btn:hover{
   background:rgba(24, 145, 145, 0.08);
+  color:rgb(24, 145, 145);
 }
 
 .payment-grid{

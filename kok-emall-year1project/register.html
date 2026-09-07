@@ -38,14 +38,15 @@
       <div class="auth-card">
         <h2>Create account</h2>
         <form id="register-form" class="auth-form">
-          <label>Name (optional)</label>
-          <input id="register-name" type="text" placeholder="Your name" />
+          <label for="register-name">Name (optional)</label>
+          <input id="register-name" type="text" placeholder="Your name" autocomplete="name" />
 
-          <label>Email</label>
-          <input id="register-email" type="email" placeholder="you@example.com" required />
+          <label for="register-email">Email</label>
+          <input id="register-email" type="email" placeholder="you@example.com" autocomplete="email" required />
 
-          <label>Password (optional)</label>
-          <input id="register-password" type="password" placeholder="Optional (at least 6 characters)" />
+          <label for="register-password">Password (optional)</label>
+          <input id="register-password" type="password" placeholder="Optional (at least 6 characters)" autocomplete="new-password" minlength="6" />
+          <p class="auth-status">Add a password if you want to log in without a code later.</p>
 
           <div id="register-code-group" class="auth-code-group" hidden>
             <label>Verification code</label>
@@ -75,6 +76,6 @@
       </div>
     </section>
 
-    <script src="eMall-java/script.js?v=20260908"></script>
+    <script src="eMall-java/script.js?v=20260908c"></script>
   </body>
 </html>

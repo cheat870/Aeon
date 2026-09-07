@@ -38,15 +38,15 @@
       <div class="auth-card">
         <h2>Login</h2>
 
-        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-          <button type="button" id="tab-login-code" class="normal" style="flex: 1; padding: 10px; font-size: 14px;">Email Code</button>
-          <button type="button" id="tab-login-password" class="normal auth-secondary-btn" style="flex: 1; padding: 10px; font-size: 14px;">Password</button>
+        <div class="auth-tabs" role="tablist" aria-label="Login method">
+          <button type="button" id="tab-login-code" class="is-active" role="tab" aria-selected="true" aria-controls="login-code-form">Email Code</button>
+          <button type="button" id="tab-login-password" role="tab" aria-selected="false" aria-controls="login-form">Password</button>
         </div>
 
         <!-- Form 1: Email Code Login / Auto-Register -->
         <form id="login-code-form" class="auth-form">
-          <label>Email</label>
-          <input id="login-code-email" type="email" placeholder="you@example.com" required />
+          <label for="login-code-email">Email</label>
+          <input id="login-code-email" type="email" placeholder="you@example.com" autocomplete="username" required />
 
           <div id="login-code-group" class="auth-code-group" hidden>
             <label>Verification code</label>
@@ -72,11 +72,11 @@
 
         <!-- Form 2: Password Login -->
         <form id="login-form" class="auth-form" hidden>
-          <label>Email</label>
-          <input id="login-email" type="email" placeholder="you@example.com" required />
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" placeholder="you@example.com" autocomplete="username" required />
 
-          <label>Password</label>
-          <input id="login-password" type="password" placeholder="••••••••" required />
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
 
           <button class="normal" type="submit">Login with password</button>
         </form>
@@ -88,6 +88,6 @@
       </div>
     </section>
 
-    <script src="eMall-java/script.js?v=20260908"></script>
+    <script src="eMall-java/script.js?v=20260908c"></script>
   </body>
 </html>
