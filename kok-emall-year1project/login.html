@@ -289,17 +289,7 @@
         <h1>Welcome back</h1>
         <p class="subtitle">Sign in to your KOK-eMall account</p>
 
-        <!-- Tabs -->
-        <div class="auth-tabs">
-          <button class="auth-tab active" id="tab-login-code" type="button">
-            <i class="fa-solid fa-envelope" style="margin-right:6px"></i>Email Code
-          </button>
-          <button class="auth-tab" id="tab-login-password" type="button">
-            <i class="fa-solid fa-lock" style="margin-right:6px"></i>Password
-          </button>
-        </div>
-
-        <!-- Form 1: Email Code -->
+        <!-- Email Code Form only -->
         <form id="login-code-form" class="auth-form">
           <div class="form-group">
             <label>Email address</label>
@@ -311,6 +301,7 @@
 
           <div id="login-code-group" class="code-group" hidden>
             <label style="font-size:14px;font-weight:600;color:#374151">Verification code</label>
+            <p style="font-size:12px;color:#9ca3af;margin-bottom:4px">Enter the 8-digit code sent to your email</p>
             <div class="code-input-wrap">
               <input id="login-code-input" type="text" inputmode="numeric" maxlength="8"
                 placeholder="00000000" autocomplete="one-time-code" />
@@ -329,33 +320,10 @@
           </button>
         </form>
 
-        <!-- Form 2: Password -->
+        <!-- Hidden password form (kept for script.js compatibility) -->
         <form id="login-form" class="auth-form" hidden>
-          <div class="form-group">
-            <label>Email address</label>
-            <div class="input-wrap">
-              <i class="fa-regular fa-envelope"></i>
-              <input id="login-email" type="email" placeholder="you@example.com" required />
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Password</label>
-            <div class="input-wrap">
-              <i class="fa-solid fa-lock"></i>
-              <input id="login-password" type="password" placeholder="Enter your password" required />
-              <button type="button" class="toggle-pw" onclick="
-                var inp=document.getElementById('login-password');
-                inp.type=inp.type==='password'?'text':'password';
-                this.className='toggle-pw';
-                this.querySelector('i').className=inp.type==='password'?'fa-solid fa-eye':'fa-solid fa-eye-slash';
-              "><i class="fa-solid fa-eye"></i></button>
-            </div>
-          </div>
-
-          <button class="btn-primary" type="submit">
-            <i class="fa-solid fa-right-to-bracket"></i> Login with Password
-          </button>
+          <input id="login-email" type="email" />
+          <input id="login-password" type="password" />
         </form>
 
         <div class="auth-footer">
