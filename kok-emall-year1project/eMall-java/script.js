@@ -789,18 +789,35 @@
     const loginCodeForm = document.getElementById('login-code-form');
 
     if (tabCode && tabPassword && loginCodeForm && loginForm) {
-      tabCode.addEventListener('click', () => {
-        tabCode.classList.remove('auth-secondary-btn');
-        tabPassword.classList.add('auth-secondary-btn');
-        loginCodeForm.hidden = false;
-        loginForm.hidden = true;
-      });
-      tabPassword.addEventListener('click', () => {
-        tabPassword.classList.remove('auth-secondary-btn');
-        tabCode.classList.add('auth-secondary-btn');
-        loginForm.hidden = false;
-        loginCodeForm.hidden = true;
-      });
+      const codeEmail = document.getElementById('login-code-email');
+      const passwordEmail = document.getElementById('login-email');
+
+      const setLoginTab = (mode) => {
+        const useCode = mode !== 'password';
+        tabCode.classList.toggle('is-active', useCode);
+        tabPassword.classList.toggle('is-active', !useCode);
+        tabCode.setAttribute('aria-selected', String(useCode));
+        tabPassword.setAttribute('aria-selected', String(!useCode));
+        loginCodeForm.hidden = !useCode;
+        loginForm.hidden = useCode;
+
+        if (useCode && passwordEmail?.value && codeEmail && !codeEmail.value) {
+          codeEmail.value = passwordEmail.value;
+        }
+        if (!useCode && codeEmail?.value && passwordEmail && !passwordEmail.value) {
+          passwordEmail.value = codeEmail.value;
+        }
+      };
+
+      tabCode.addEventListener('click', () => setLoginTab('code'));
+      tabPassword.addEventListener('click', () => setLoginTab('password'));
+
+      const requestedMethod = new URLSearchParams(window.location.search).get('method');
+      if (requestedMethod === 'password') {
+        setLoginTab('password');
+      } else {
+        setLoginTab('code');
+      }
     }
 
     if (loginCodeForm) {
