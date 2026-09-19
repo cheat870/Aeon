@@ -3,78 +3,384 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register - KOK-eMall</title>
-    <link rel="stylesheet" href="eMall-style/style.css">
+    <title>Create Account - KOK-eMall</title>
     <script src="https://kit.fontawesome.com/29f47544e3.js" crossorigin="anonymous"></script>
-    <link rel="stylesheet" href="eMall-style/header.css">
-    <link rel="stylesheet" href="eMall-style/general.css">
-    <link rel="stylesheet" href="eMall-style/footer.css">
-    <link rel="stylesheet" href="eMall-style/auth.css">
     <link rel="icon" type="image" href="eMall-photo/screenshot 2025-07-28 111552.png">
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        background: #f5f7fa;
+      }
+
+      /* ─── Left Brand Panel ─── */
+      .auth-brand {
+        width: 45%;
+        background: linear-gradient(135deg, #0f6b6b 0%, #189191 60%, #22b8b8 100%);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 60px 48px;
+        color: #fff;
+        position: relative;
+        overflow: hidden;
+      }
+      .auth-brand::before {
+        content: '';
+        position: absolute;
+        width: 350px; height: 350px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 50%;
+        top: -80px; right: -80px;
+      }
+      .auth-brand::after {
+        content: '';
+        position: absolute;
+        width: 250px; height: 250px;
+        background: rgba(255,255,255,0.06);
+        border-radius: 50%;
+        bottom: -60px; left: -60px;
+      }
+      .brand-logo { width: 72px; height: 72px; object-fit: cover; border-radius: 18px; margin-bottom: 28px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+      .brand-title { font-size: 32px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 12px; }
+      .brand-subtitle { font-size: 16px; opacity: 0.85; line-height: 1.6; text-align: center; max-width: 300px; }
+      .brand-features { margin-top: 40px; display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 300px; }
+      .brand-feature { display: flex; align-items: center; gap: 14px; }
+      .brand-feature i { width: 38px; height: 38px; background: rgba(255,255,255,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+      .brand-feature span { font-size: 14px; opacity: 0.9; }
+
+      /* ─── Right Form Panel ─── */
+      .auth-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 48px 40px;
+        overflow-y: auto;
+      }
+      .auth-box {
+        width: 100%;
+        max-width: 420px;
+      }
+      .auth-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #189191;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 500;
+        margin-bottom: 32px;
+        transition: gap 0.2s;
+      }
+      .auth-back:hover { gap: 10px; }
+
+      .auth-box h1 { font-size: 28px; font-weight: 800; color: #111; margin-bottom: 6px; }
+      .auth-box p.subtitle { color: #6b7280; font-size: 15px; margin-bottom: 32px; }
+
+      /* Form */
+      .auth-form { display: flex; flex-direction: column; gap: 18px; }
+      .form-group { display: flex; flex-direction: column; gap: 6px; }
+      .form-group label { font-size: 14px; font-weight: 600; color: #374151; }
+      .label-optional { font-size: 12px; color: #9ca3af; font-weight: 400; margin-left: 4px; }
+      .input-wrap { position: relative; }
+      .input-wrap i.icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        font-size: 15px;
+      }
+      .input-wrap input {
+        width: 100%;
+        padding: 12px 14px 12px 40px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 15px;
+        color: #111;
+        outline: none;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .input-wrap input:focus {
+        border-color: #189191;
+        box-shadow: 0 0 0 3px rgba(24,145,145,0.12);
+      }
+      .input-wrap input::placeholder { color: #c4c9d4; }
+      .toggle-pw {
+        position: absolute;
+        right: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #9ca3af;
+        cursor: pointer;
+        font-size: 15px;
+        background: none;
+        border: none;
+        padding: 0;
+      }
+      .toggle-pw:hover { color: #189191; }
+
+      /* Code box */
+      .code-group { display: flex; flex-direction: column; gap: 6px; }
+      .code-input-wrap input {
+        width: 100%;
+        padding: 14px;
+        border: 1.5px solid #e5e7eb;
+        border-radius: 10px;
+        font-size: 26px;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: 8px;
+        outline: none;
+        color: #111;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background: #fff;
+      }
+      .code-input-wrap input:focus {
+        border-color: #189191;
+        box-shadow: 0 0 0 3px rgba(24,145,145,0.12);
+      }
+
+      /* Status */
+      .auth-status {
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.5;
+        background: #f0fafa;
+        padding: 10px 14px;
+        border-radius: 8px;
+        border-left: 3px solid #189191;
+      }
+
+      /* Steps indicator */
+      .steps {
+        display: flex;
+        align-items: center;
+        gap: 0;
+        margin-bottom: 28px;
+      }
+      .step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #9ca3af;
+      }
+      .step.active { color: #189191; font-weight: 600; }
+      .step-dot {
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        background: #e5e7eb;
+        color: #9ca3af;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 12px; font-weight: 700;
+        flex-shrink: 0;
+      }
+      .step.active .step-dot { background: #189191; color: #fff; }
+      .step-line { flex: 1; height: 2px; background: #e5e7eb; margin: 0 8px; min-width: 24px; }
+
+      /* Buttons */
+      .btn-primary {
+        width: 100%;
+        padding: 13px;
+        background: linear-gradient(135deg, #189191, #0f6b6b);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.2s, transform 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+      .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+      .btn-primary:active { transform: translateY(0); }
+
+      .btn-secondary {
+        width: 100%;
+        padding: 12px;
+        background: #fff;
+        color: #189191;
+        border: 1.5px solid #189191;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .btn-secondary:hover { background: rgba(24,145,145,0.06); }
+
+      /* Footer link */
+      .auth-footer {
+        margin-top: 28px;
+        text-align: center;
+        font-size: 14px;
+        color: #6b7280;
+      }
+      .auth-footer a { color: #189191; font-weight: 600; text-decoration: none; }
+      .auth-footer a:hover { text-decoration: underline; }
+
+      /* Terms */
+      .terms {
+        font-size: 12px;
+        color: #9ca3af;
+        text-align: center;
+        line-height: 1.5;
+      }
+      .terms a { color: #189191; }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        body { flex-direction: column; }
+        .auth-brand { width: 100%; padding: 40px 24px 32px; min-height: auto; }
+        .brand-features { display: none; }
+        .brand-subtitle { display: none; }
+        .auth-brand::before, .auth-brand::after { display: none; }
+        .auth-panel { padding: 32px 24px; }
+        .auth-back { margin-bottom: 20px; }
+      }
+    </style>
   </head>
   <body>
-    <section id="header">
-      <a href="#"><img class="logo" src="eMall-photo/screenshot 2025-07-28 111552.png" alt="logo" /></a>
 
-      <div>
-        <ul id="navbar">
-          <li><a href="index.html">Home</a></li>
-          <li><a href="shop.html">Shop</a></li>
-          <li><a href="blog.html">Blog</a></li>
-          <li><a href="about.html">About</a></li>
-          <li><a href="contact.html">Contact</a></li>
-          <li id="lg-bag"><a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a></li>
-          <a href="#" id="close"><i class="fa-solid fa-x"></i></a>
-        </ul>
+    <!-- ─── Left Brand Panel ─── -->
+    <div class="auth-brand">
+      <img class="brand-logo" src="eMall-photo/screenshot 2025-07-28 111552.png" alt="KOK-eMall" />
+      <div class="brand-title">KOK-eMall</div>
+      <p class="brand-subtitle">Join thousands of shoppers enjoying the best deals in Cambodia</p>
+      <div class="brand-features">
+        <div class="brand-feature">
+          <i class="fa-solid fa-envelope-circle-check"></i>
+          <span>Email only — no password required</span>
+        </div>
+        <div class="brand-feature">
+          <i class="fa-solid fa-tags"></i>
+          <span>Exclusive member discounts</span>
+        </div>
+        <div class="brand-feature">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>Track your orders anytime</span>
+        </div>
       </div>
+    </div>
 
-      <div id="mobile">
-        <a href="cart.html"><i class="fa-solid fa-cart-shopping"></i></a>
-        <i id="bar" class="fas fa-outdent"></i>
-      </div>
-    </section>
+    <!-- ─── Right Form Panel ─── -->
+    <div class="auth-panel">
+      <div class="auth-box">
 
-    <section class="section-p1">
-      <div class="auth-card">
-        <h2>Create account</h2>
+        <a href="index.html" class="auth-back">
+          <i class="fa-solid fa-arrow-left"></i> Back to Home
+        </a>
+
+        <h1>Create your account</h1>
+        <p class="subtitle">It's free and only takes a minute</p>
+
+        <!-- Steps -->
+        <div class="steps" id="steps-indicator">
+          <div class="step active" id="step1">
+            <div class="step-dot">1</div>
+            <span>Your info</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step" id="step2">
+            <div class="step-dot">2</div>
+            <span>Verify email</span>
+          </div>
+          <div class="step-line"></div>
+          <div class="step" id="step3">
+            <div class="step-dot">3</div>
+            <span>Done!</span>
+          </div>
+        </div>
+
         <form id="register-form" class="auth-form">
-          <label>Name (optional)</label>
-          <input id="register-name" type="text" placeholder="Your name" />
 
-          <label>Email</label>
-          <input id="register-email" type="email" placeholder="you@example.com" required />
+          <div class="form-group">
+            <label>Full name <span class="label-optional">(optional)</span></label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-user icon"></i>
+              <input id="register-name" type="text" placeholder="Your name" />
+            </div>
+          </div>
 
-          <label>Password (optional)</label>
-          <input id="register-password" type="password" placeholder="Optional (at least 6 characters)" />
+          <div class="form-group">
+            <label>Email address</label>
+            <div class="input-wrap">
+              <i class="fa-regular fa-envelope icon"></i>
+              <input id="register-email" type="email" placeholder="you@example.com" required />
+            </div>
+          </div>
 
-          <div id="register-code-group" class="auth-code-group" hidden>
-            <label>Verification code</label>
-            <input
-              id="register-code"
-              type="text"
-              inputmode="numeric"
-              maxlength="8"
-              placeholder="Enter 8-digit code"
-              autocomplete="one-time-code"
-            />
+          <div class="form-group">
+            <label>Password <span class="label-optional">(optional)</span></label>
+            <div class="input-wrap">
+              <i class="fa-solid fa-lock icon"></i>
+              <input id="register-password" type="password" placeholder="At least 6 characters" />
+              <button type="button" class="toggle-pw" onclick="
+                var inp=document.getElementById('register-password');
+                inp.type=inp.type==='password'?'text':'password';
+                this.querySelector('i').className=inp.type==='password'?'fa-solid fa-eye':'fa-solid fa-eye-slash';
+              "><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+
+          <div id="register-code-group" class="code-group" hidden>
+            <label style="font-size:14px;font-weight:600;color:#374151">Verification code</label>
+            <p style="font-size:12px;color:#9ca3af;margin-bottom:4px">Enter the 8-digit code sent to your email</p>
+            <div class="code-input-wrap">
+              <input id="register-code" type="text" inputmode="numeric" maxlength="8"
+                placeholder="00000000" autocomplete="one-time-code" />
+            </div>
           </div>
 
           <p id="register-status" class="auth-status" aria-live="polite">
-            We will send an 8-digit verification code to your email before your account is created.
+            We'll send a verification code to your email before creating your account.
           </p>
 
-          <div class="auth-actions">
-            <button id="register-submit" class="normal" type="submit">Send verification code</button>
-            <button id="register-resend" class="normal auth-secondary-btn" type="button" hidden>Resend code</button>
-          </div>
+          <button id="register-submit" class="btn-primary" type="submit">
+            <i class="fa-solid fa-paper-plane"></i> Send verification code
+          </button>
+          <button id="register-resend" class="btn-secondary" type="button" hidden>
+            <i class="fa-solid fa-rotate-right"></i> Resend code
+          </button>
+
+          <p class="terms">
+            By creating an account you agree to our
+            <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+          </p>
         </form>
-        <p class="auth-help">
+
+        <div class="auth-footer">
           Already have an account?
-          <a href="login.html">Login</a>
-        </p>
+          <a href="login.html">Sign in</a>
+        </div>
+
       </div>
-    </section>
+    </div>
 
     <script src="eMall-java/script.js?v=20260908"></script>
+    <script>
+      // Step indicator update on code reveal
+      var origSubmit = null;
+      window.addEventListener('DOMContentLoaded', function() {
+        var codeGroup = document.getElementById('register-code-group');
+        var obs = new MutationObserver(function() {
+          var hidden = codeGroup.hidden;
+          document.getElementById('step1').classList.toggle('active', hidden);
+          document.getElementById('step2').classList.toggle('active', !hidden);
+        });
+        obs.observe(codeGroup, { attributes: true, attributeFilter: ['hidden'] });
+      });
+    </script>
   </body>
 </html>
