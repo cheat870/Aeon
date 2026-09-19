@@ -321,9 +321,9 @@
         </form>
 
         <!-- Hidden password form (kept for script.js compatibility) -->
-        <form id="login-form" class="auth-form" hidden>
-          <input id="login-email" type="email" />
-          <input id="login-password" type="password" />
+        <form id="login-form" style="display:none;position:absolute;pointer-events:none" aria-hidden="true">
+          <input id="login-email" type="email" tabindex="-1" />
+          <input id="login-password" type="password" tabindex="-1" />
         </form>
 
         <div class="auth-footer">
